@@ -19,7 +19,7 @@ class TestOpenxExport:
 
         road = Road(3, 3.75, segments)
 
-        odr = road.create_opendrive_map()
+        odr = road.create_opendrive_map("my_road")
 
         path_to_xodr = str(result_dir / "straight.xodr")
         odr.write_xml(path_to_xodr)
@@ -36,7 +36,7 @@ class TestOpenxExport:
 
         road = Road(3, 3.75, segments)
 
-        odr = road.create_opendrive_map()
+        odr = road.create_opendrive_map("my_road")
 
         path_to_xodr = str(result_dir / "curved.xodr")
         odr.write_xml(path_to_xodr)

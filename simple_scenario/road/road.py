@@ -558,7 +558,7 @@ class Road(Renderable):
             # ref_line and offset_lines are already available, no need to do anything here
             pass
 
-    def create_opendrive_map(self) -> xodr.OpenDrive:
+    def create_opendrive_map(self, map_name: str) -> xodr.OpenDrive:
         """
         Create an opendrive map from the road object.
         Use odrviewer.io to visualize it.
@@ -567,8 +567,10 @@ class Road(Renderable):
         if self._segments == self.ALLOWED_SEGMENT_SEQUENCES[2]:
             raise NotImplementedError
 
+        geo_reference = f"<![CDATA[+proj=tmerc +lat_0={self._ORIGIN_LAT} +lon_0={self._ORIGIN_LON} +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +geoidgrids=egm96_15.gtx +vunits=m +no_defs ]]>"
+
         # Create odr object
-        odr = xodr.OpenDrive("my_road")
+        odr = xodr.OpenDrive(map_name, geo_reference=geo_reference)
 
         # Add segments
         odr_road_segments = []

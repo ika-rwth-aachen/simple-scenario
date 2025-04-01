@@ -878,11 +878,9 @@ class Scenario(Renderable):
                 msg = "Cannot save to openx if the scenario has been initialized from data."
                 raise ValueError(msg)
 
-            # CAUTION: Please read the instructions in _create_openscenario() to run in esmini
-
             # OpenDRIVE
             odr_path = result_dir / f"{self._scenario_id}.xodr"
-            odr = self._road.create_opendrive_map()
+            odr = self._road.create_opendrive_map(self._scenario_id)
             odr.write_xml(str(odr_path))
 
             # OpenSCENARIO

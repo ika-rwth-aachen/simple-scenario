@@ -946,10 +946,30 @@ class Scenario(Renderable):
             max_deceleration=-self._ego_configuration.a_lon_min,
         )
         ego_vehicle_object.add_property_file(model_blue_car_path)
+        ego_vehicle_id = "ego_vehicle"
         ego_vehicle_object.add_property("model_id", "ego")
+        ego_vehicle_object.add_property("type", ego_vehicle_id)
+
+        # Create ego controller
+        controller_props = xosc.Properties()
+        controller_props.add_property(
+            name="module", value="ros_vehicle_control_goal_action.py"
+        )
+
+        ego_lanelet = self._road.lanelet_map.laneletLayer[
+            self._ego_configuration.lanelet_id
+        ]
+        goal_x, goal_y = self._road.from_frenet_to_cart(
+            ego_lanelet.centerline,
+            self._ego_configuration.s0 + self._road.goal_position,
+            self._ego_configuration.t0,
+        )
+        controller_props.add_property(name="target_x", value=str(goal_x))
+        controller_props.add_property(name="target_y", value=str(goal_y))
+        controller = xosc.Controller("CustomController", controller_props)
 
         # Add entities
-        entities.add_scenario_object("ego", ego_vehicle_object)  # , controller)
+        entities.add_scenario_object(ego_vehicle_id, ego_vehicle_object)
 
         # Create other vehicle objects
         max_acceleration = 9.81
@@ -979,9 +999,10 @@ class Scenario(Renderable):
                 max_deceleration=max_deceleration,
             )
             vehicle_object.add_property_file(model_red_car_path)
-            vehicle_object.add_property("model_id", str(vehicle.id))
+            vehicle_object.add_property("model_id", f"other_{vehicle.id}")
+            vehicle_object.add_property("type", "other_vehicle")
             vehicle_objects[vehicle.id] = vehicle_object
-            entities.add_scenario_object(str(vehicle.id), vehicle_object)
+            entities.add_scenario_object(f"other_{vehicle.id}", vehicle_object)
 
         # Create the init part of the storyboard
         init = xosc.Init()
@@ -1007,8 +1028,18 @@ class Scenario(Renderable):
             )
         )
 
-        init.add_init_action("ego", ego_initial_speed_action)
-        init.add_init_action("ego", ego_start_position_action)
+        ego_override_controller_value_action = xosc.OverrideControllerValueAction()
+        ego_override_controller_value_action.throttle_active = False
+        ego_override_controller_value_action.brake_active = False
+        ego_override_controller_value_action.gear_active = False
+
+        ego_controller_action = xosc.ControllerAction(
+            assignControllerAction=xosc.AssignControllerAction(controller=controller),
+            overrideControllerValueAction=ego_override_controller_value_action,
+        )
+        init.add_init_action(ego_vehicle_id, ego_initial_speed_action)
+        init.add_init_action(ego_vehicle_id, ego_start_position_action)
+        init.add_init_action(ego_vehicle_id, ego_controller_action)
 
         # Other vehicles
         for vehicle in self._vehicles:
@@ -1020,8 +1051,8 @@ class Scenario(Renderable):
                 xosc.LanePosition(vehicle.s0, vehicle.t0, vehicle_initial_lane_id, 1)
             )
 
-            init.add_init_action(str(vehicle.id), vehicle_initial_speed_action)
-            init.add_init_action(str(vehicle.id), vehicle_initial_position_action)
+            init.add_init_action(f"other_{vehicle.id}", vehicle_initial_speed_action)
+            init.add_init_action(f"other_{vehicle.id}", vehicle_initial_position_action)
 
         ## Init the storyboard
         stoptrigger_storyboard = xosc.ValueTrigger(
@@ -1051,10 +1082,10 @@ class Scenario(Renderable):
             maneuver = xosc.Maneuver(f"Maneuver_vehicle_{vehicle.id}")
 
             # Create the event
-            event = xosc.Event(f"Event_vehicle_{vehicle.id}", xosc.Priority.override)
+            event = xosc.Event(f"Event_vehicle_{vehicle.id}", xosc.Priority.overwrite)
 
             # Add the actor to the maneuver group
-            maneuver_group.add_actor(str(vehicle.id))
+            maneuver_group.add_actor(f"other_{vehicle.id}")
 
             # Init trajectory
             vehicle_trajectory = xosc.Trajectory(
@@ -1111,6 +1142,7 @@ class Scenario(Renderable):
             storyboard=storyboard,
             roadnetwork=road_network,
             catalog=catalog,
+            osc_minor_version=1,
         )
 
         return osc_scenario

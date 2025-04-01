@@ -1,0 +1,18 @@
+from pathlib import Path
+
+from simple_scenario import Scenario
+
+
+def main(config: str) -> None:
+    result_dir = Path(__file__).parent / "results"
+    result_dir.mkdir(exist_ok=True)
+
+    scenario = Scenario.from_x(config)
+
+    scenario.render(result_dir)
+    scenario.save(result_dir, mode="openx")
+    scenario.save(result_dir, mode="lanelet2")
+
+
+if __name__ == "__main__":
+    main("scripts/simple_scenario.json")

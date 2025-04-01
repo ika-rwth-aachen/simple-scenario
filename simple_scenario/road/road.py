@@ -16,12 +16,11 @@ from lanelet2.core import (
     BasicPoint2d,
 )
 from lanelet2.geometry import findNearest
-from loguru import logger
-from scenariogeneration import xodr
-from typing import TYPE_CHECKING
+from lanelet2.projection import UtmProjector
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from loguru import logger
+from pathlib import Path
+from scenariogeneration import xodr
 
 from .road_segment import RoadSegment
 from .straight_segment import StraightSegment
@@ -37,6 +36,10 @@ class Road(Renderable):
         (StraightSegment, ClothoidSegment, ArcSegment),
         (PolylineSegment,),
     )
+
+    # GPS origin centered in UTM 32N
+    _ORIGIN_LAT = 50.0
+    _ORIGIN_LON = 9.0
 
     def __init__(
         self,
@@ -600,6 +603,15 @@ class Road(Renderable):
         odr.adjust_roads_and_lanes()
 
         return odr
+
+    def save_lanelet2_map(self, result_dir: str | Path, map_name: str) -> None:
+        result_dir = Path(result_dir)
+
+        lanelet2_map_file = result_dir / f"{map_name}.osm"
+
+        projector = UtmProjector(lanelet2.io.Origin(self._ORIGIN_LAT, self._ORIGIN_LON))
+
+        lanelet2.io.write(str(lanelet2_map_file), self._lanelet_map, projector)
 
     def _plot_in_ax(  # noqa: PLR0912
         self, ax: plt.Axes, use_lanelet: bool = True, verbose: bool = False

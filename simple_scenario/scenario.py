@@ -46,6 +46,7 @@ class Scenario(Renderable):
         "config",  # Such that it can be used to init again with Scenario.from_config()
         "cr",  # Save to commroad xml
         "openx",
+        "lanelet2",
     )
 
     def __init__(
@@ -887,6 +888,13 @@ class Scenario(Renderable):
             # OpenSCENARIO
             osc = self._create_openscenario(odr_path)
             osc.write_xml(str(result_dir / f"{self._scenario_id}.xosc"))
+
+        elif mode == "lanelet2":
+            if self._initialized_from_data:
+                msg = "Cannot save to openx if the scenario has been initialized from data."
+                raise ValueError(msg)
+
+            self._road.save_lanelet2_map(result_dir, self._scenario_id)
 
     def _create_openscenario(self, odr_path: str | Path) -> xosc.Scenario:
         """

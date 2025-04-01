@@ -48,9 +48,15 @@ class TestScenario:
                 match="Cannot save to openx if the scenario has been initialized from data.",
             ):
                 scenario.save(result_dir, mode="openx")
+            with pytest.raises(
+                ValueError,
+                match="Cannot save to openx if the scenario has been initialized from data.",
+            ):
+                scenario.save(result_dir, mode="lanelet2")
         else:
             scenario.save(result_dir)
             scenario.save(result_dir, mode="openx")
+            scenario.save(result_dir, mode="lanelet2")
 
         if CR_AVAILABLE:
             scenario.save(result_dir, mode="cr")

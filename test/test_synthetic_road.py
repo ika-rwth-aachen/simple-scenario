@@ -11,7 +11,7 @@ from simple_scenario.road import (
 )
 
 
-class TestRoad:
+class TestSyntheticRoad:
     RESULT_DIR = Path(__file__).parent / "results" / "test_road"
     RESULT_DIR.mkdir(exist_ok=True)
 
@@ -161,5 +161,5 @@ class TestRoad:
 
 
 if __name__ == "__main__":
-    test_road = TestRoad()
+    test_road = TestSyntheticRoad()
     test_road.test_curved_road()

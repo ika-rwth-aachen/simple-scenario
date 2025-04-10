@@ -2,7 +2,7 @@ from pathlib import Path
 
 from simple_scenario import Vehicle
 from simple_scenario.rendering import create_scenario_plot_ax
-from simple_scenario.road import Road, StraightSegment
+from simple_scenario.road import SyntheticRoad, StraightSegment
 
 
 class TestVehicle:
@@ -23,7 +23,7 @@ class TestVehicle:
 
         # For compilation, we need a road
         print("Compile vehicle")
-        road = Road(3, 3.75, [StraightSegment(300)])
+        road = SyntheticRoad(3, 3.75, [StraightSegment(300)])
 
         duration = 10
         dt = 0.1
@@ -55,7 +55,7 @@ class TestVehicle:
 
         # For compilation, we need a road
         print("Compile vehicle")
-        road = Road(3, 3.75, [StraightSegment(300)])
+        road = SyntheticRoad(3, 3.75, [StraightSegment(300)])
 
         duration = 10
         dt = 0.1
@@ -89,7 +89,7 @@ class TestVehicle:
 
         # For compilation, we need a road
         print("Compile vehicle")
-        road = Road(3, 3.75, [StraightSegment(300)])
+        road = SyntheticRoad(3, 3.75, [StraightSegment(300)])
 
         duration = 10
         dt = 0.1

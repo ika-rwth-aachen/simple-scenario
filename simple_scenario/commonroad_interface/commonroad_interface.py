@@ -26,7 +26,7 @@ from ..lanelet_network_wrapper import LaneletNetworkWrapper
 if TYPE_CHECKING:
     from pathlib import Path
     from ..ego_configuration import EgoConfiguration
-    from ..road.road import Road
+    from ..road.synthetic_road import SyntheticRoad
     from ..vehicle import Vehicle
 
 
@@ -41,7 +41,7 @@ class CommonroadInterface:
         simple_scenario_config: dict,
         ego_configuration: EgoConfiguration,
         vehicles: list[Vehicle],
-        road: Road,
+        road: SyntheticRoad,
     ) -> None:
         logger.debug(
             f"Scenario '{simple_scenario_config['scenario_id']}': Create CR interface"

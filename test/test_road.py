@@ -3,7 +3,12 @@ import numpy as np
 
 from pathlib import Path
 
-from simple_scenario.road import Road, StraightSegment, ArcSegment, ClothoidSegment
+from simple_scenario.road import (
+    SyntheticRoad,
+    StraightSegment,
+    ArcSegment,
+    ClothoidSegment,
+)
 
 
 class TestRoad:
@@ -16,7 +21,7 @@ class TestRoad:
 
         straight_segment = StraightSegment(100)
 
-        road = Road(3, 3.75, [straight_segment], goal_position=80)
+        road = SyntheticRoad(3, 3.75, [straight_segment], goal_position=80)
 
         plot_name = "short_road"
 
@@ -55,7 +60,7 @@ class TestRoad:
 
         straight_segment = StraightSegment(100, heading=np.pi / 4)
 
-        road = Road(3, 3.75, [straight_segment])
+        road = SyntheticRoad(3, 3.75, [straight_segment])
 
         plot_name = "short_road_at_angle"
 
@@ -99,7 +104,7 @@ class TestRoad:
 
         segments = [straight_segment, clothoid_segment, arc_segment]
 
-        road = Road(2, 3.75, segments)
+        road = SyntheticRoad(2, 3.75, segments)
 
         plot_name = "curved_road"
 
@@ -139,7 +144,7 @@ class TestRoad:
 
         straight_segment = StraightSegment(1000)
 
-        road = Road(3, 3.75, [straight_segment], goal_position=80)
+        road = SyntheticRoad(3, 3.75, [straight_segment], goal_position=80)
 
         plot_name = "long_road"
 

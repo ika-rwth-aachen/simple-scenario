@@ -19,7 +19,7 @@ if LXD_AVAILABLE:
     from lxd_io import Dataset
 
 from .. import EgoConfiguration, Vehicle, Scenario
-from ..road import Road
+from ..road import SyntheticRoad
 
 
 class HighdExtractor:
@@ -101,12 +101,12 @@ class HighdExtractor:
 
         # Create Road objects
         if recording_id not in self._lower_roads_per_recording:
-            lower_road = Road.from_highd_parameters(
+            lower_road = SyntheticRoad.from_highd_parameters(
                 recording.get_meta_data("lowerLaneMarkings"),
                 "lower",
                 speed_limit=speed_limit,
             )
-            upper_road = Road.from_highd_parameters(
+            upper_road = SyntheticRoad.from_highd_parameters(
                 recording.get_meta_data("upperLaneMarkings"),
                 "upper",
                 speed_limit=speed_limit,

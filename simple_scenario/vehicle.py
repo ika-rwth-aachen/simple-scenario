@@ -14,7 +14,7 @@ from .rendering import Renderable
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt
     from omegaconf import DictConfig
-    from .road import Road
+    from .road import SyntheticRoad
 
 
 class Vehicle(Renderable):
@@ -305,7 +305,7 @@ class Vehicle(Renderable):
     def compiled(self) -> bool:
         return self._compiled
 
-    def compile(self, road: Road, duration: float, dt: float) -> None:  # noqa: PLR0912
+    def compile(self, road: SyntheticRoad, duration: float, dt: float) -> None:  # noqa: PLR0912
         """
         Create absolute cartesian coordinates etc
         """
@@ -492,7 +492,7 @@ class Vehicle(Renderable):
 
     def _generate_lc_trajectory(
         self,
-        road: Road,
+        road: SyntheticRoad,
         s_lc0: float,
         v0: float,
         llt_id_lc0: int,

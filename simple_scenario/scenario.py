@@ -37,7 +37,7 @@ if CR_AVAILABLE:
 from .from_data_config_error import FromDataConfigError
 from .ego_configuration import EgoConfiguration
 from .rendering import Renderable, get_rcParams
-from .road import Road, StraightSegment, ClothoidSegment, ArcSegment
+from .road import SyntheticRoad, StraightSegment, ClothoidSegment, ArcSegment
 from .vehicle import Vehicle
 
 
@@ -52,7 +52,7 @@ class Scenario(Renderable):
     def __init__(
         self,
         scenario_id: str,
-        road: Road,
+        road: SyntheticRoad,
         ego_configuration: EgoConfiguration,
         vehicles: list[Vehicle] | None,
         duration: float,
@@ -218,7 +218,7 @@ class Scenario(Renderable):
             raise ValueError
         compiled_config["road"]["segments"] = segments
 
-        road = Road(**compiled_config["road"])
+        road = SyntheticRoad(**compiled_config["road"])
         compiled_config["road"] = road
 
         # Ego configuration
@@ -339,7 +339,7 @@ class Scenario(Renderable):
             goal_region_x, 0
         )
 
-        road = Road(
+        road = SyntheticRoad(
             n_lanes,
             lane_width,
             [StraightSegment(road_length)],
@@ -442,7 +442,7 @@ class Scenario(Renderable):
         return self._scenario_id
 
     @property
-    def road(self) -> Road:
+    def road(self) -> SyntheticRoad:
         return self._road
 
     @property

@@ -2,7 +2,7 @@ from pathlib import Path
 
 from simple_scenario import EgoConfiguration
 from simple_scenario.rendering import create_scenario_plot_ax
-from simple_scenario.road import Road, StraightSegment
+from simple_scenario.road import SyntheticRoad, StraightSegment
 
 
 class TestEgoConfiguration:
@@ -13,7 +13,7 @@ class TestEgoConfiguration:
         result_dir = self.RESULT_DIR / "test_ego_configuration"
         result_dir.mkdir(exist_ok=True)
 
-        road = Road(3, 3.75, [StraightSegment(200)])
+        road = SyntheticRoad(3, 3.75, [StraightSegment(200)])
 
         ego_configuration = EgoConfiguration(1000, 50, 0, 27.78)
 

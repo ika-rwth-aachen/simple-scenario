@@ -1,7 +1,12 @@
 from pathlib import Path
 
 from simple_scenario import Scenario
-from simple_scenario.road import Road, StraightSegment, ArcSegment, ClothoidSegment
+from simple_scenario.road import (
+    SyntheticRoad,
+    StraightSegment,
+    ArcSegment,
+    ClothoidSegment,
+)
 
 
 class TestOpenxExport:
@@ -17,7 +22,7 @@ class TestOpenxExport:
 
         segments = [straight_segment]
 
-        road = Road(3, 3.75, segments)
+        road = SyntheticRoad(3, 3.75, segments)
 
         odr = road.create_opendrive_map("my_road")
 
@@ -34,7 +39,7 @@ class TestOpenxExport:
 
         segments = [straight_segment, clothoid_segment, arc_segment]
 
-        road = Road(3, 3.75, segments)
+        road = SyntheticRoad(3, 3.75, segments)
 
         odr = road.create_opendrive_map("my_road")
 

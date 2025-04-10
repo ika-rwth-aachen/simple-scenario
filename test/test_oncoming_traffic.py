@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from simple_scenario import Scenario, EgoConfiguration, Vehicle
-from simple_scenario.road import Road, StraightSegment
+from simple_scenario.road import SyntheticRoad, StraightSegment
 
 
 class TestOncomingTraffic:
@@ -12,7 +12,7 @@ class TestOncomingTraffic:
         result_dir = self.RESULT_DIR / "test_scenario_gen"
         result_dir.mkdir(exist_ok=True)
 
-        road = Road(2, 3.75, [StraightSegment(500)])
+        road = SyntheticRoad(2, 3.75, [StraightSegment(500)])
 
         ego = EgoConfiguration(1000, 50, 0, 100 / 3.6)
 

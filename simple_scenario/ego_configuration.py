@@ -3,7 +3,7 @@ import numpy as np
 
 from matplotlib.patches import Rectangle
 
-from .road import Road
+from .road import SyntheticRoad
 from .rendering import Renderable
 from .vehicle import Vehicle
 
@@ -124,7 +124,7 @@ class EgoConfiguration(Renderable):
     def compiled(self) -> bool:
         return self._compiled
 
-    def compile(self, road: Road) -> None:
+    def compile(self, road: SyntheticRoad) -> None:
         lanelet = road.lanelet_map.laneletLayer[self._lanelet_id]
 
         x0, y0 = road.from_frenet_to_cart(lanelet.centerline, self._s0, self._t0)

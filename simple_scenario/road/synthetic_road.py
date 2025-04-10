@@ -30,7 +30,7 @@ from .polyline_segment import PolylineSegment
 from ..rendering import Renderable, create_plot_ax
 
 
-class Road(Renderable):
+class SyntheticRoad(Renderable):
     ALLOWED_SEGMENT_SEQUENCES = (
         (StraightSegment,),
         (StraightSegment, ClothoidSegment, ArcSegment),
@@ -103,8 +103,8 @@ class Road(Renderable):
 
         self._lanelet_map = self._create_lanelet_map()
 
-    def copy(self) -> Road:
-        road_copy = Road(
+    def copy(self) -> SyntheticRoad:
+        road_copy = SyntheticRoad(
             self.n_lanes,
             self.lane_width,
             segments=deepcopy(self.segments),
@@ -126,7 +126,7 @@ class Road(Renderable):
         road_part: str,
         speed_limit: int,
         goal_position_from_end_of_road: float = -100,
-    ) -> Road:
+    ) -> SyntheticRoad:
         """
         Create a Road object from the highD map parameters.
         """

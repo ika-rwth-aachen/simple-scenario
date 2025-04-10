@@ -11,7 +11,7 @@ from simple_scenario import (
     CR_AVAILABLE,
 )
 from simple_scenario.rendering import create_scenario_plot_ax
-from simple_scenario.road import Road, StraightSegment
+from simple_scenario.road import SyntheticRoad, StraightSegment
 
 
 class TestScenario:
@@ -76,7 +76,9 @@ class TestScenario:
         duration = 10
 
         # Create road
-        road = Road(3, 3.75, [StraightSegment(500, heading=0)], goal_position=450)
+        road = SyntheticRoad(
+            3, 3.75, [StraightSegment(500, heading=0)], goal_position=450
+        )
 
         # Create ego configuration
         ego_configuration = EgoConfiguration(1000, 50, 0, 27.78)
@@ -138,7 +140,9 @@ class TestScenario:
         duration = 10
 
         # Create road
-        road = Road(5, 3.75, [StraightSegment(500, heading=0)], goal_position=450)
+        road = SyntheticRoad(
+            5, 3.75, [StraightSegment(500, heading=0)], goal_position=450
+        )
 
         # Create ego configuration
         ego_configuration = EgoConfiguration(1000, 50, 0, 27.78)
@@ -341,7 +345,9 @@ class TestScenario:
         duration = 10
 
         # Create road
-        road = Road(3, 3.75, [StraightSegment(500, heading=0)], goal_position=450)
+        road = SyntheticRoad(
+            3, 3.75, [StraightSegment(500, heading=0)], goal_position=450
+        )
 
         # Create ego configuration
         ego_configuration = EgoConfiguration(1000, 50, 0, 27.78)

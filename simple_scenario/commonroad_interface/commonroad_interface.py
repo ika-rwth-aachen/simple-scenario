@@ -316,7 +316,7 @@ class CommonroadInterface:
         goal_area_width = max(self._road.offset_lines.keys())
 
         # In ref_line frenet coordinates
-        goal_area_pos_s = self._road.goal_position
+        goal_area_pos_s = self._ego_configuration.target_s
         goal_area_pos_t = -goal_area_width / 2
 
         # To cart

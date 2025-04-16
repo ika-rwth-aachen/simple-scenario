@@ -14,7 +14,7 @@ class TestOncomingTraffic:
 
         road = SyntheticRoad(2, 3.75, [StraightSegment(500)])
 
-        ego = EgoConfiguration(1000, 50, 0, 100 / 3.6)
+        ego = EgoConfiguration(1000, 50, 0, 100 / 3.6, 400, 0)
 
         overtaking_vehicle = Vehicle(
             0,

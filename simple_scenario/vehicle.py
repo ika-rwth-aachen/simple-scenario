@@ -1,20 +1,22 @@
 from __future__ import annotations
 
 import lanelet2
-
+import lanelet2.geometry
 import numpy as np
+
 from matplotlib.patches import Rectangle
 from typing import TYPE_CHECKING
 from vehiclemodels.parameters_vehicle1 import parameters_vehicle1
 from vehiclemodels.parameters_vehicle2 import parameters_vehicle2
 from vehiclemodels.parameters_vehicle3 import parameters_vehicle3
 
+from .road.road import Road
 from .rendering import Renderable
 
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt
     from omegaconf import DictConfig
-    from .road import SyntheticRoad
+    from lanelet2.core import LaneletMap
 
 
 class Vehicle(Renderable):
@@ -46,6 +48,7 @@ class Vehicle(Renderable):
         lc_type: str = "polynomial",
         lc_vy: float = 0,
         inverse_driving_direction: bool = False,
+        target_lanelet_id: int | None = None,
         vehicle_type_name: str = "medium",
         length: float | None = None,
         width: float | None = None,
@@ -64,6 +67,8 @@ class Vehicle(Renderable):
         lc_duration: Time the lane change takes to be completed
         lc_type: How the lc is done
         lc_vy: Only used if lc_type is "vy"
+        inverse_driving_direction: If True, the vehicle is driving in the opposite direction
+        target_lanelet_id: ID of the target lanelet (used to construct a laneletsequence), if None, lanelet_id is used and the vehicle may only drive in the initial lanelet
         vehicle_type_name: Type of the vehicle
         """
 
@@ -105,7 +110,12 @@ class Vehicle(Renderable):
             "lc_duration": lc_duration,
             "lc_type": lc_type,
             "lc_vy": lc_vy,
+            "target_lanelet_id": target_lanelet_id,
+            "inverse_driving_direction": inverse_driving_direction,
             "vehicle_type_name": vehicle_type_name,
+            "length": length,
+            "width": width,
+            "from_data": from_data,
         }
 
         self._vehicle_id = vehicle_id
@@ -126,17 +136,24 @@ class Vehicle(Renderable):
 
         self._inverse_driving_direction = inverse_driving_direction
 
+        self._target_lanelet_id = target_lanelet_id
+
         self._vehicle_type_name = vehicle_type_name
         self._vehicle_parameters = None
         if self._vehicle_type_name == "custom":
             self._length = length
             self._width = width
         else:
-            self._vehicle_parameters = self.VEHICLE_TYPE_PARAMETERS[
-                self._vehicle_type_name
-            ]()
-            self._length = self._vehicle_parameters.l
-            self._width = self._vehicle_parameters.w
+            vehicle_parameters = self.get_vehicle_parameters_of_vehicle_type(
+                vehicle_type_name
+            )
+            self._length = vehicle_parameters.l
+            self._width = vehicle_parameters.w
+
+        self._traffic_rules = lanelet2.traffic_rules.create(
+            lanelet2.traffic_rules.Locations.Germany,
+            lanelet2.traffic_rules.Participants.Vehicle,
+        )
 
         # Compiled values
         self._compiled = False
@@ -148,6 +165,19 @@ class Vehicle(Renderable):
 
         # If the vehicle is created directly from data, this is True
         self._initialized_from_data = from_data
+
+    @classmethod
+    def get_vehicle_parameters_of_vehicle_type(cls, vehicle_type_name: str) -> dict:
+        if vehicle_type_name not in cls.VEHICLE_TYPE_PARAMETERS:
+            msg = "Vehicle type is not available"
+            raise ValueError(msg)
+
+        if vehicle_type_name == "custom":
+            msg = "If vehicle type is 'custom', parameters must be selected manually."
+            raise ValueError(msg)
+
+        vehicle_parameters = cls.VEHICLE_TYPE_PARAMETERS[vehicle_type_name]()
+        return vehicle_parameters
 
     @classmethod
     def from_data(
@@ -241,38 +271,33 @@ class Vehicle(Renderable):
 
     @property
     def x(self) -> np.ndarray:
-        if not self._compiled:
-            msg = "Please call .compile() before accessing this data."
-            raise Exception(msg)
+        self._check_is_compiled()
         return self._x
 
     @property
     def y(self) -> np.ndarray:
-        if not self._compiled:
-            msg = "Please call .compile() before accessing this data."
-            raise Exception(msg)
+        self._check_is_compiled()
         return self._y
 
     @property
     def heading(self) -> np.ndarray:
-        if not self._compiled:
-            msg = "Please call .compile() before accessing this data."
-            raise Exception(msg)
+        self._check_is_compiled()
         return self._heading
 
     @property
     def v(self) -> np.ndarray:
-        if not self._compiled:
-            msg = "Please call .compile() before accessing this data."
-            raise Exception(msg)
+        self._check_is_compiled()
         return self._v
 
     @property
     def a(self) -> np.ndarray:
+        self._check_is_compiled()
+        return self._a
+
+    def _check_is_compiled(self) -> None:
         if not self._compiled:
             msg = "Please call .compile() before accessing this data."
             raise Exception(msg)
-        return self._a
 
     @property
     def inverse_driving_direction(self) -> bool:
@@ -305,17 +330,12 @@ class Vehicle(Renderable):
     def compiled(self) -> bool:
         return self._compiled
 
-    def compile(self, road: SyntheticRoad, duration: float, dt: float) -> None:  # noqa: PLR0912
+    def compile(self, lanelet_map: LaneletMap, duration: float, dt: float) -> None:  # noqa: PLR0912
         """
         Create absolute cartesian coordinates etc
         """
 
-        # NEED LANELET2 MAP FIRST
-        lanelet_map = road.lanelet_map
-
-        # Find lanelet by id
-        lanelet = lanelet_map.laneletLayer[self._lanelet_id]
-
+        # -- Build time-series arrays --
         n_steps = self._n_steps_from_duration_dt(duration, dt)
 
         # a
@@ -337,47 +357,81 @@ class Vehicle(Renderable):
 
         # t
         lat_offset_vector = self._t0 * np.ones((n_steps,))
-        lc_start_step = int(self._lc_delay / dt)
 
-        # Lane change
+        # -- Determine route --
+        source_lanelet = lanelet_map.laneletLayer[self._lanelet_id]
+        if self._target_lanelet_id is not None:
+            target_lanelet = lanelet_map.laneletLayer[self._target_lanelet_id]
+        else:
+            target_lanelet = source_lanelet
+
+        # Establish routing_graph, route without lane changes, get shortest path and transform it into a lanelet_sequence
+        routing_graph = lanelet2.routing.RoutingGraph(lanelet_map, self._traffic_rules)
+        route = routing_graph.getRoute(source_lanelet, target_lanelet)
+
+        if route is None:
+            msg = f"Vehicle {self._vehicle_id}: No valid route found. Please check the route (lanelet_id: {self._lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+            raise ValueError(msg)
+
+        # FOR DEBUGGIN MAPS
+        # projector = lanelet2.projection.UtmProjector(lanelet2.io.Origin(50.9098472225444, 6.22742895630397))  # noqa: ERA001
+        # lanelet2.io.write("route.osm", route.laneletSubmap().laneletMap(), projector)  # noqa: ERA001
+        # lanelet2.io.write("routing_graph.osm", routing_graph.getDebugLaneletMap(0), projector)  # noqa: ERA001
+        # FOR DEBUGGIN MAPS
+
+        # -- Handle lane change --
         if self._lc_direction in (-1, 1):
+            # Make sure that the requested movement is possible on the route
+            # Change the lat offset values according to requested lane change
+
+            # -- Section up to lane change --
+            # Find shortest path from source_lanelet to target_lanelet in the route (including lane changes)
+            lanelet_path = route.shortestPath()
+            # Get initial part of the route until the first lane change
+            lanelet_sequence = lanelet_path.getRemainingLane(source_lanelet)
+
+            # Find lanelet at lc position
+            lc_start_step = int(self._lc_delay / dt)
+            lc_start_s = lon_position_vector[lc_start_step]
+
+            if lc_start_s > lanelet2.geometry.length(lanelet_sequence.centerline):
+                msg = f"Vehicle {self._vehicle_id}: Path up to lane change position is not long enough. Please check the route (lanelet_id: {self._lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+                raise ValueError(msg)
+
+            # -- Lane change section --
+
+            # Find lanelet at lc position
+            lc_start_x, lc_start_y = Road.from_frenet_to_cart(
+                lanelet_sequence.centerline, lc_start_s, 0
+            )
+            lc_source_llt_id = Road.find_lanelet_id_by_position_on_lanelet_map(
+                lanelet_map, lc_start_x, lc_start_y
+            )
+            if lc_source_llt_id is None:
+                msg = f"Vehicle {self._vehicle_id}: Lane change after {self._lc_delay}s at s={lc_start_s}: No valid start lanelet at this position. Maybe there are more than one?"
+                raise ValueError(msg)
+            lc_source_lanelet = lanelet_map.laneletLayer[lc_source_llt_id]
+
+            # Check that there is a valid neighbour for the lane change
             if self._lc_direction == -1:
-                # Assumption: right lanelet ID is one less than initial lanelet id
-                target_lanelet_id = self._lanelet_id - 1
-
-                if target_lanelet_id not in lanelet_map.laneletLayer:
-                    msg = "Lane change to the right not possible. No lanelet to the right."
-                    raise ValueError(msg)
-
-                target_lanelet = lanelet_map.laneletLayer[target_lanelet_id]
-
-                if not lanelet2.geometry.rightOf(target_lanelet, lanelet):
-                    msg = "Right lanelet has another ID than expected."
-                    raise Exception(msg)
+                lc_target_lanelet = routing_graph.right(lc_source_lanelet)
 
             elif self._lc_direction == 1:
-                # Assumption: right lanelet ID is one more than initial lanelet id
-                target_lanelet_id = self._lanelet_id + 1
+                lc_target_lanelet = routing_graph.left(lc_source_lanelet)
 
-                if target_lanelet_id not in lanelet_map.laneletLayer:
-                    msg = (
-                        "Lane change to the left not possible. No lanelet to the left."
-                    )
-                    raise ValueError(msg)
+            if lc_target_lanelet is None:
+                direction = "left" if self._lc_direction == 1 else "right"
+                msg = f"Vehicle {self._vehicle_id}: Lane change after {self._lc_delay}s at s={lc_start_s} from lanelet {lc_source_llt_id} to the {direction} not possible. No valid neighbour lanelet. (x={lc_start_x}, y={lc_start_y})"
+                raise ValueError(msg)
 
-                target_lanelet = lanelet_map.laneletLayer[target_lanelet_id]
-
-                if not lanelet2.geometry.leftOf(target_lanelet, lanelet):
-                    msg = "Left lanelet has another ID than expected."
-                    raise Exception(msg)
-
+            # Perform the lane change
             if self._lc_type == "polynomial":
                 lc_traj = self._generate_lc_trajectory(
-                    road,
+                    lanelet_map,
                     lon_position_vector[lc_start_step],
                     speed_vector[lc_start_step],
-                    self._lanelet_id,
-                    target_lanelet_id,
+                    lc_source_lanelet.id,
+                    lc_target_lanelet.id,
                     self._lc_duration,
                     dt,
                 )
@@ -387,7 +441,6 @@ class Vehicle(Renderable):
                 lat_offset_vector[lc_start_step : lc_start_step + n_lc_steps] = lc_traj[
                     :, 1
                 ]
-                lat_offset_vector[lc_start_step + n_lc_steps :] = lc_traj[-1, 1]
 
             elif self._lc_type == "vy":
                 lat_offset_change_vector = (
@@ -402,13 +455,11 @@ class Vehicle(Renderable):
 
                 # End of LC
                 # Find max possible t positon
-                initial_llt = road.lanelet_map.laneletLayer[self._lanelet_id]
-                target_llt = road.lanelet_map.laneletLayer[target_lanelet_id]
-                x_lc1, y_lc1 = road.from_frenet_to_cart(
-                    target_llt.centerline, self._s0, 0
+                x_lc1, y_lc1 = Road.from_frenet_to_cart(
+                    lc_source_lanelet.centerline, self._s0, 0
                 )
-                _, t_lc1 = road.from_cart_to_frenet(
-                    initial_llt.centerline, x_lc1, y_lc1
+                _, t_lc1 = Road.from_cart_to_frenet(
+                    lc_target_lanelet.centerline, x_lc1, y_lc1
                 )
                 max_t = t_lc1  # - self.width / 2
 
@@ -417,10 +468,91 @@ class Vehicle(Renderable):
                 else:
                     lat_offset_vector[lat_offset_vector < max_t] = max_t
 
-        # Positions to cartesian
-        x, y = road.from_frenet_to_cart(
-            lanelet.centerline, lon_position_vector, lat_offset_vector
-        )
+            # -- Section after lane change --
+
+            # Check whether the rest of the route is long enough
+
+            # Find x, y position after lane change
+            lc_end_idx = lc_start_step + n_lc_steps - 1
+            lc_end_s = lon_position_vector[lc_end_idx]
+            lc_end_t = lat_offset_vector[lc_end_idx]
+            lc_end_x, lc_end_y = Road.from_frenet_to_cart(
+                lc_source_lanelet.centerline, lc_end_s, lc_end_t
+            )
+
+            # Find s, t position w.r.t. the lc_target_lanelet
+            lc_end_s_in_lc_target_lanelet, lc_end_t_in_lc_target_lanelet = (
+                Road.from_cart_to_frenet(
+                    lc_target_lanelet.centerline, lc_end_x, lc_end_y
+                )
+            )
+
+            # Update the remainder of the lon_position_vector and lat_offset_vector to be relative to the new lanelet
+            # There may be a s-offset between the lanelets
+            lon_position_vector[lc_start_step + n_lc_steps :] = lon_position_vector[
+                lc_start_step + n_lc_steps :
+            ] + (lc_end_s_in_lc_target_lanelet - lc_end_s)
+            # Assuming that the vehicle is staying a the offset t from the end of the lane change
+            lat_offset_vector[lc_start_step + n_lc_steps :] = (
+                lc_end_t_in_lc_target_lanelet
+            )
+
+            # Get remaining route until the target_lanelet
+            route_after_lc = routing_graph.getRoute(lc_target_lanelet, target_lanelet)
+            shortest_path_after_lc = route_after_lc.shortestPath()
+            # Only keep non-lc path
+            lanelet_sequence_after_lc = shortest_path_after_lc.getRemainingLane(
+                lc_target_lanelet
+            )
+
+            remaining_path_length = (
+                lanelet2.geometry.length(lanelet_sequence_after_lc.centerline)
+                - lc_end_s_in_lc_target_lanelet
+            )
+
+            remaining_driven_dist = lon_position_vector[-1] - lc_end_s
+            if remaining_driven_dist > remaining_path_length:
+                msg = f"Vehicle {self._vehicle_id} is reaching the end of the given path. Please check the route (lanelet_id: {self._lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+                raise ValueError(msg)
+
+            # -- Compute global x, y for the whole lane change trajectory --
+
+            x = np.zeros_like(lon_position_vector)
+            y = np.zeros_like(lat_offset_vector)
+
+            # Until end of lane change
+            x[: lc_end_idx + 1], y[: lc_end_idx + 1] = Road.from_frenet_to_cart(
+                lanelet_sequence.centerline,
+                lon_position_vector[: lc_end_idx + 1],
+                lat_offset_vector[: lc_end_idx + 1],
+            )
+            # After lane change
+            x[lc_end_idx + 1 :], y[lc_end_idx + 1 :] = Road.from_frenet_to_cart(
+                lanelet_sequence_after_lc.centerline,
+                lon_position_vector[lc_end_idx + 1 :],
+                lat_offset_vector[lc_end_idx + 1 :],
+            )
+
+        else:
+            # -- No lane change --
+
+            # Find shortest path from source_lanelet to target_lanelet in the route (including lane changes)
+            lanelet_path = route.shortestPath()
+            # Get initial part of the route until the first lane change
+            lanelet_sequence = lanelet_path.getRemainingLane(source_lanelet)
+
+            # Check that the lanelet_sequence is long enough
+            total_driven_dist = lon_position_vector[-1]
+            if total_driven_dist > lanelet2.geometry.length(
+                lanelet_sequence.centerline
+            ):
+                msg = f"Vehicle {self._vehicle_id} is reaching the end of the given path. Please check the route (lanelet_id: {self._lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+                raise ValueError(msg)
+
+            # Positions to cartesian
+            x, y = Road.from_frenet_to_cart(
+                lanelet_sequence.centerline, lon_position_vector, lat_offset_vector
+            )
 
         # Heading, Assumption: Heading does not change in last time step
         if self._lc_type == "vy":
@@ -428,12 +560,10 @@ class Vehicle(Renderable):
                 heading = np.zeros_like(acceleration_vector)
             elif driving_direction == -1:
                 heading = np.pi * np.ones_like(acceleration_vector)
-            else:
-                raise RuntimeError
         else:
             # Get initial heading guess from the road
-            x_diff0, y_diff0 = road.from_frenet_to_cart(
-                lanelet.centerline,
+            x_diff0, y_diff0 = Road.from_frenet_to_cart(
+                lanelet_sequence.centerline,
                 np.array([lon_position_vector[0], lon_position_vector[0] + 0.5]),
                 np.zeros((2,)),
             )
@@ -470,6 +600,9 @@ class Vehicle(Renderable):
 
         self._compiled = True
 
+    def get_boundary_rect(self) -> tuple[float, float, float, float]:
+        return (self._x.min(), self._y.min(), self._x.max(), self._y.max())
+
     @staticmethod
     def _n_steps_from_duration_dt(duration: float, dt: float) -> int:
         n_steps = int(np.floor(duration / dt))
@@ -492,7 +625,7 @@ class Vehicle(Renderable):
 
     def _generate_lc_trajectory(
         self,
-        road: SyntheticRoad,
+        lanelet_map: LaneletMap,
         s_lc0: float,
         v0: float,
         llt_id_lc0: int,
@@ -502,12 +635,13 @@ class Vehicle(Renderable):
     ) -> np.ndarray:
         """
         Return LC trajectory in frenet frame of llt_lc0 (before lc)
+        TODO: Adapt for lower speeds (see sad-rl for solution)
         """
         # !! COPIED FROM: https://gitlab.ika.rwth-aachen.de/lva/pilots/-/blob/main/pilots/highway_pilot/highway_pilot.py?ref_type=heads#L591
         # CHANGED!
 
-        llt_lc0 = road.lanelet_map.laneletLayer[llt_id_lc0]
-        llt_lc1 = road.lanelet_map.laneletLayer[llt_id_lc1]
+        llt_lc0 = lanelet_map.laneletLayer[llt_id_lc0]
+        llt_lc1 = lanelet_map.laneletLayer[llt_id_lc1]
 
         # Keep velocity, constant acceleration over lc_duration
         a = 0
@@ -517,11 +651,11 @@ class Vehicle(Renderable):
         s_lc1 = s_lc0 + ((v0 + v1) / 2) * lc_duration
 
         # Lateral positions in ref_frame
-        x_lc0, y_lc0 = road.from_frenet_to_cart(llt_lc0.centerline, s_lc0, 0)
-        x_lc1, y_lc1 = road.from_frenet_to_cart(llt_lc1.centerline, s_lc1, 0)
+        x_lc0, y_lc0 = Road.from_frenet_to_cart(llt_lc0.centerline, s_lc0, 0)
+        x_lc1, y_lc1 = Road.from_frenet_to_cart(llt_lc1.centerline, s_lc1, 0)
 
-        _, t_lc0 = road.from_cart_to_frenet(llt_lc0.centerline, x_lc0, y_lc0)
-        _, t_lc1 = road.from_cart_to_frenet(llt_lc0.centerline, x_lc1, y_lc1)
+        _, t_lc0 = Road.from_cart_to_frenet(llt_lc0.centerline, x_lc0, y_lc0)
+        _, t_lc1 = Road.from_cart_to_frenet(llt_lc0.centerline, x_lc1, y_lc1)
 
         # 5th order polynomial
         d = lc_duration

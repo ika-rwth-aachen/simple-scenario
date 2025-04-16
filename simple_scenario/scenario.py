@@ -12,6 +12,7 @@ from matplotlib.transforms import Bbox
 from pathlib import Path
 from PIL import Image
 from scenariogeneration import xosc
+from tqdm import tqdm
 
 from . import CR_AVAILABLE
 
@@ -37,7 +38,13 @@ if CR_AVAILABLE:
 from .from_data_config_error import FromDataConfigError
 from .ego_configuration import EgoConfiguration
 from .rendering import Renderable, get_rcParams
-from .road import SyntheticRoad, StraightSegment, ClothoidSegment, ArcSegment
+from .road import (
+    SyntheticRoad,
+    StraightSegment,
+    ClothoidSegment,
+    ArcSegment,
+    MappedRoad,
+)
 from .vehicle import Vehicle
 
 
@@ -193,6 +200,15 @@ class Scenario(Renderable):
         with config_file.open("r") as f:
             config = json.load(f)
 
+        # Relative to absolute paths
+        if "from" in config.get("road", {}):
+            for map_file_key in ("lanelet2_map_file", "opendrive_map_file"):
+                map_file = config["road"]["from"].get(map_file_key, None)
+                if map_file is not None:
+                    config["road"]["from"][map_file_key] = (
+                        config_file.parent / map_file
+                    ).resolve()
+
         scenario = cls.from_config(config)
 
         return scenario
@@ -205,32 +221,44 @@ class Scenario(Renderable):
 
         compiled_config = deepcopy(config)
 
-        # Road
-        if len(config["road"]["segments"]) == 1:
-            segments = [StraightSegment(**config["road"]["segments"][0])]
-        elif len(config["road"]["segments"]) == 3:
-            segments = [
-                StraightSegment(**config["road"]["segments"][0]),
-                ClothoidSegment(**config["road"]["segments"][1]),
-                ArcSegment(**config["road"]["segments"][2]),
-            ]
-        else:
-            raise ValueError
-        compiled_config["road"]["segments"] = segments
+        # -- Road --
+        # Check whether it is a real road or synthetic road
+        # real road uses "from"
+        is_real_road = (
+            len(compiled_config["road"]) == 1 and "from" in compiled_config["road"]
+        )
 
-        road = SyntheticRoad(**compiled_config["road"])
+        if is_real_road:
+            road = MappedRoad(**compiled_config["road"]["from"])
+
+        else:
+            if len(config["road"]["segments"]) == 1:
+                segments = [StraightSegment(**config["road"]["segments"][0])]
+            elif len(config["road"]["segments"]) == 3:
+                segments = [
+                    StraightSegment(**config["road"]["segments"][0]),
+                    ClothoidSegment(**config["road"]["segments"][1]),
+                    ArcSegment(**config["road"]["segments"][2]),
+                ]
+            else:
+                msg = "Only 1 or 3 segments road segments are supported via config."
+                raise ValueError(msg)
+            compiled_config["road"]["segments"] = segments
+
+            road = SyntheticRoad(**compiled_config["road"])
+
         compiled_config["road"] = road
 
-        # Ego configuration
+        # -- Ego configuration --
         ego_configuration = EgoConfiguration(**config["ego_configuration"])
         compiled_config["ego_configuration"] = ego_configuration
 
-        # Vehicles
+        # -- Vehicles --
         vehicles = [Vehicle(**vehicle_config) for vehicle_config in config["vehicles"]]
 
         compiled_config["vehicles"] = vehicles
 
-        # Scenario
+        # -- Scenario --
         scenario = cls(**compiled_config)
 
         return scenario
@@ -323,20 +351,27 @@ class Scenario(Renderable):
         ego_initial_pos_frenet = lanelet_network_wrapper.from_cart_to_llt_frenet(
             ego_initial_lanelet_id, *ego_initial_pos_cart
         )
-        ego_configuration = EgoConfiguration(
-            ego_initial_lanelet_id,
-            *ego_initial_pos_frenet,
-            planning_problem.initial_state.velocity,
-        )
-
+        # Extract goal region
         if len(planning_problem.goal.state_list) != 1:
             msg = "Planning problem must contain exactly one goal region."
             raise NotImplementedError(msg)
         goal_region = planning_problem.goal.state_list[0]
         # Assumption: A slim rectangle spanning over all lanes of the road at some s
-        goal_region_x = goal_region.position.vertices[:, 0].mean()
-        goal_region_s, _ = lanelet_network_wrapper.from_cart_to_ref_frenet(
-            goal_region_x, 0
+        goal_region_center_x, goal_region_center_y = np.mean(
+            goal_region.position.vertices, axis=0
+        )
+        goal_region_center_s, goal_region_center_t = (
+            lanelet_network_wrapper.from_cart_to_ref_frenet(
+                goal_region_center_x, goal_region_center_y
+            )
+        )
+
+        ego_configuration = EgoConfiguration(
+            ego_initial_lanelet_id,
+            *ego_initial_pos_frenet,
+            planning_problem.initial_state.velocity,
+            target_s=goal_region_center_s,
+            target_t=goal_region_center_t,
         )
 
         road = SyntheticRoad(
@@ -344,7 +379,6 @@ class Scenario(Renderable):
             lane_width,
             [StraightSegment(road_length)],
             speed_limit,
-            goal_region_s,
             x0=p0[0],
             y0=p0[1],
         )
@@ -433,7 +467,7 @@ class Scenario(Renderable):
         # Compile vehicles
         for vehicle in self._vehicles:
             if not vehicle.compiled:
-                vehicle.compile(self._road, self._duration, self._dt)
+                vehicle.compile(self._road.lanelet_map, self._duration, self._dt)
 
         self._compiled = True
 
@@ -488,6 +522,32 @@ class Scenario(Renderable):
         Array with all steps (step indices) in the scenario.
         """
         return np.arange(self.step_start, self.step_end + 1)
+
+    def get_boundary_rect(
+        self, show_full_road: bool = False
+    ) -> tuple[float, float, float, float]:
+        # Ego configuration
+        xmin, ymin, xmax, ymax = self._ego_configuration.get_boundary_rect()
+
+        # Vehicles
+        for vehicle in self._vehicles:
+            vehicle_xmin, vehicle_ymin, vehicle_xmax, vehicle_ymax = (
+                vehicle.get_boundary_rect()
+            )
+            xmin = min(xmin, vehicle_xmin)
+            ymin = min(ymin, vehicle_ymin)
+            xmax = max(xmax, vehicle_xmax)
+            ymax = max(ymax, vehicle_ymax)
+
+        # Road
+        if show_full_road:
+            road_xmin, road_ymin, road_xmax, road_ymax = self._road.get_boundary_rect()
+            xmin = min(xmin, road_xmin)
+            ymin = min(ymin, road_ymin)
+            xmax = max(xmax, road_xmax)
+            ymax = max(ymax, road_ymax)
+
+        return (xmin, ymin, xmax, ymax)
 
     @property
     def cr_interface(self) -> None:
@@ -707,14 +767,9 @@ class Scenario(Renderable):
     ) -> None:
         # Set axis limits
         margin = 10
-        # Find road boundaries
-        road_boundary = self._road.boundary_line
-        ax.set_xlim(
-            np.min(road_boundary[:, 0]) - margin, np.max(road_boundary[:, 0]) + margin
-        )
-        ax.set_ylim(
-            np.min(road_boundary[:, 1]) - margin, np.max(road_boundary[:, 1]) + margin
-        )
+        xmin, ymin, xmax, ymax = self.get_boundary_rect()
+        ax.set_xlim(xmin - margin, xmax + margin)
+        ax.set_ylim(ymin - margin, ymax + margin)
 
         title = f"Scenario '{self._scenario_id}'"
         if timestep:
@@ -735,11 +790,15 @@ class Scenario(Renderable):
     ) -> Path:
         logger.debug(f"Create gif of scenario '{self._scenario_id}'")
 
+        if isinstance(self._road, MappedRoad):
+            msg = "Cannot create gif of mapped road. (Would work, but takes a long time, because the road may be very large.)"
+            raise NotImplementedError(msg)
+
         save_dir = Path(save_dir)
 
         frames = []
 
-        for timestep in self.steps:
+        for timestep in tqdm(self.steps, desc="Creating gif frames"):
             with plt.rc_context(get_rcParams(dpi=dpi, hide_ticks=True)):
                 f, ax = plt.subplots()
 
@@ -761,16 +820,9 @@ class Scenario(Renderable):
 
                 # Set axis limits
                 margin = 10
-                # Find road boundaries
-                road_boundary = self._road.boundary_line
-                ax.set_xlim(
-                    np.min(road_boundary[:, 0]) - margin,
-                    np.max(road_boundary[:, 0]) + margin,
-                )
-                ax.set_ylim(
-                    np.min(road_boundary[:, 1]) - margin,
-                    np.max(road_boundary[:, 1]) + margin,
-                )
+                xmin, ymin, xmax, ymax = self.get_boundary_rect()
+                ax.set_xlim(xmin - margin, xmax + margin)
+                ax.set_ylim(ymin - margin, ymax + margin)
 
                 ax.text(
                     0.01,
@@ -851,7 +903,7 @@ class Scenario(Renderable):
 
     def save(self, result_dir: Path, mode: str = "config") -> None:
         """
-        mode: "config", "cr" or "openx"
+        modes: see self.COMPILE_MODES
         """
 
         result_dir = Path(result_dir)
@@ -879,9 +931,7 @@ class Scenario(Renderable):
                 raise ValueError(msg)
 
             # OpenDRIVE
-            odr_path = result_dir / f"{self._scenario_id}.xodr"
-            odr = self._road.create_opendrive_map(self._scenario_id)
-            odr.write_xml(str(odr_path))
+            odr_path = self._road.save_opendrive_map(result_dir, self._scenario_id)
 
             # OpenSCENARIO
             osc = self._create_openscenario(odr_path)
@@ -956,16 +1006,11 @@ class Scenario(Renderable):
             name="module", value="ros_vehicle_control_goal_action.py"
         )
 
-        ego_lanelet = self._road.lanelet_map.laneletLayer[
-            self._ego_configuration.lanelet_id
-        ]
-        goal_x, goal_y = self._road.from_frenet_to_cart(
-            ego_lanelet.centerline,
-            self._ego_configuration.s0 + self._road.goal_position,
-            self._ego_configuration.t0,
+        target_x, target_y = self._road.from_llt_local_to_opendrive_local(
+            self._ego_configuration.target_x, self._ego_configuration.target_y
         )
-        controller_props.add_property(name="target_x", value=str(goal_x))
-        controller_props.add_property(name="target_y", value=str(goal_y))
+        controller_props.add_property(name="target_x", value=str(target_x))
+        controller_props.add_property(name="target_y", value=str(target_y))
         controller = xosc.Controller("CustomController", controller_props)
 
         # Add entities
@@ -1014,18 +1059,15 @@ class Scenario(Renderable):
         ego_initial_speed_action = xosc.AbsoluteSpeedAction(
             self._ego_configuration.v0, step_time
         )
-        # In Simple Scenario lane ids start with 1000 from the right (driving direction)
-        # In ODR, they start with -1 from the left and get smaller to the right
-        ego_initial_lane_id = (
-            self._ego_configuration.lanelet_id - 1000
-        ) - self._road.n_lanes
-        ego_start_position_action = xosc.TeleportAction(
-            xosc.LanePosition(
-                self._ego_configuration.s0,
-                self._ego_configuration.t0,
-                ego_initial_lane_id,
-                1,
+        ego_start_x, ego_start_y, ego_start_heading = (
+            self._road.from_llt_local_to_opendrive_local(
+                self._ego_configuration.x0,
+                self._ego_configuration.y0,
+                self._ego_configuration.heading0,
             )
+        )
+        ego_start_position_action = xosc.TeleportAction(
+            xosc.WorldPosition(ego_start_x, ego_start_y, h=ego_start_heading)
         )
 
         ego_override_controller_value_action = xosc.OverrideControllerValueAction()
@@ -1046,9 +1088,13 @@ class Scenario(Renderable):
             vehicle_initial_speed_action = xosc.AbsoluteSpeedAction(
                 vehicle.v0, step_time
             )
-            vehicle_initial_lane_id = (vehicle.lanelet_id - 1000) - self._road.n_lanes
+            xodr_local_x, xodr_local_y, xodr_local_heading = (
+                self._road.from_llt_local_to_opendrive_local(
+                    vehicle.x[0], vehicle.y[0], vehicle.heading[0]
+                )
+            )
             vehicle_initial_position_action = xosc.TeleportAction(
-                xosc.LanePosition(vehicle.s0, vehicle.t0, vehicle_initial_lane_id, 1)
+                xosc.WorldPosition(xodr_local_x, xodr_local_y, h=xodr_local_heading)
             )
 
             init.add_init_action(f"other_{vehicle.id}", vehicle_initial_speed_action)
@@ -1095,8 +1141,13 @@ class Scenario(Renderable):
             # Create polyline
             vehicle_positions = []
             for i, _ in enumerate(vehicle.x):
+                xodr_local_x, xodr_local_y, xodr_local_heading = (
+                    self._road.from_llt_local_to_opendrive_local(
+                        vehicle.x[i], vehicle.y[i], vehicle.heading[i]
+                    )
+                )
                 vehicle_position = xosc.WorldPosition(
-                    vehicle.x[i], vehicle.y[i], h=vehicle.heading[i]
+                    xodr_local_x, xodr_local_y, h=xodr_local_heading
                 )
                 vehicle_positions.append(vehicle_position)
 

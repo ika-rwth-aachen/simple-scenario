@@ -17,7 +17,6 @@
         }
       ],
       "speed_limit": 120,
-      "goal_position": 650,
       "x0": 0,
       "y0": 0
     },
@@ -26,7 +25,9 @@
       "s0": 50,
       "t0": 0,
       "v0": 27.78,
-      "vehicle_type_name": "medium"
+      "vehicle_type_name": "medium",
+      "target_s": 650,
+      "target_t": 0
     },
     "vehicles": [
       {

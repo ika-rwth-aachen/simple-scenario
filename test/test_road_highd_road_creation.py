@@ -6,9 +6,7 @@ from pathlib import Path
 from simple_scenario import LXD_AVAILABLE
 
 if LXD_AVAILABLE:
-    from lxd_io import Dataset
-
-from simple_scenario.road import SyntheticRoad
+    from simple_scenario.lxd import HighdExtractor
 
 
 class TestHighdRoadCreation:
@@ -22,7 +20,8 @@ class TestHighdRoadCreation:
         result_dir = self.RESULT_DIR
         dataset_dir = self.DATA_DIR
 
-        dataset = Dataset(dataset_dir)
+        highd_extractor = HighdExtractor(dataset_dir)
+        dataset = highd_extractor.dataset
 
         for recording_id in dataset.recording_ids:
             print(f"recording: {recording_id:02d} / {len(dataset.recording_ids):02d}")
@@ -33,12 +32,12 @@ class TestHighdRoadCreation:
             if speed_limit == -1:
                 speed_limit = 120
 
-            lower_road = SyntheticRoad.from_highd_parameters(
+            lower_road, _ = highd_extractor.create_road_from_highd_parameters(
                 recording.get_meta_data("lowerLaneMarkings"),
                 "lower",
                 speed_limit=speed_limit,
             )
-            upper_road = SyntheticRoad.from_highd_parameters(
+            upper_road, _ = highd_extractor.create_road_from_highd_parameters(
                 recording.get_meta_data("upperLaneMarkings"),
                 "upper",
                 speed_limit=speed_limit,

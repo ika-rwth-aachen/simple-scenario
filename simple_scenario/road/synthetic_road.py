@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import lanelet2
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 
 from copy import deepcopy
@@ -13,24 +11,27 @@ from lanelet2.core import (
     LineString3d,
     Point3d,
     AttributeMap,
-    BasicPoint2d,
 )
-from lanelet2.geometry import findNearest
 from lanelet2.projection import UtmProjector
 
 from loguru import logger
 from pathlib import Path
 from scenariogeneration import xodr
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+
+from .road import Road
 from .road_segment import RoadSegment
 from .straight_segment import StraightSegment
 from .clothoid_segment import ClothoidSegment
 from .arc_segment import ArcSegment
 from .polyline_segment import PolylineSegment
-from ..rendering import Renderable, create_plot_ax
+from ..rendering import create_plot_ax
 
 
-class SyntheticRoad(Renderable):
+class SyntheticRoad(Road):
     ALLOWED_SEGMENT_SEQUENCES = (
         (StraightSegment,),
         (StraightSegment, ClothoidSegment, ArcSegment),
@@ -47,7 +48,6 @@ class SyntheticRoad(Renderable):
         lane_width: float,
         segments: list[RoadSegment],
         speed_limit: float = 120,
-        goal_position: float | None = None,
         x0: float = 0,
         y0: float = 0,
     ) -> None:
@@ -56,7 +56,6 @@ class SyntheticRoad(Renderable):
         lane_width: Lane width of each of the lanes in m
         segments: List of segments in s-direction
         speed_limit: Speed limit on the road section in km/h
-        goal_position: The s-position of the goal region in m
         x0: Start position (x) of the road in cartesian coordinates in m
         y0: Start position (y) of the road in cartesian coordinates in m
         """
@@ -76,7 +75,6 @@ class SyntheticRoad(Renderable):
             "lane_width": lane_width,
             "segments": [s.config for s in segments],
             "speed_limit": speed_limit,
-            "goal_position": goal_position,
             "x0": x0,
             "y0": y0,
         }
@@ -85,7 +83,6 @@ class SyntheticRoad(Renderable):
         self._lane_width = lane_width
         self._segments = segments
         self._speed_limit = speed_limit
-        self._goal_position = goal_position
         self._x0 = x0
         self._y0 = y0
 
@@ -98,9 +95,6 @@ class SyntheticRoad(Renderable):
         self._overall_offset_lines = {}
         self._boundary_line = None
 
-        if self._goal_position is None:
-            self._goal_position = 0.8 * self.ref_line_length
-
         self._lanelet_map = self._create_lanelet_map()
 
     def copy(self) -> SyntheticRoad:
@@ -109,7 +103,6 @@ class SyntheticRoad(Renderable):
             self.lane_width,
             segments=deepcopy(self.segments),
             speed_limit=self.speed_limit,
-            goal_position=self.goal_position,
             x0=self.x0,
             y0=self.y0,
         )
@@ -118,102 +111,6 @@ class SyntheticRoad(Renderable):
     @property
     def config(self) -> dict:
         return self._config
-
-    @classmethod
-    def from_highd_parameters(
-        cls,
-        lane_markings_str: str,
-        road_part: str,
-        speed_limit: int,
-        goal_position_from_end_of_road: float = -100,
-    ) -> SyntheticRoad:
-        """
-        Create a Road object from the highD map parameters.
-        """
-
-        possible_road_parts = ("lower", "upper")
-
-        if road_part not in possible_road_parts:
-            raise ValueError
-
-        dx = 5
-        x_buffer = 500
-        x_min = -x_buffer
-        x_max = 450 + x_buffer
-        x_values = np.arange(x_min, x_max + dx, dx).astype(float)
-
-        lane_marking_offsets = [-float(elem) for elem in lane_markings_str.split(";")]
-
-        all_linestrings = {}
-
-        for offset in lane_marking_offsets:
-            linestring_points_x = x_values.copy().tolist()
-            linestring_points_y = [offset] * len(linestring_points_x)
-
-            linestring = [linestring_points_x, linestring_points_y]
-            all_linestrings[offset] = linestring
-
-        # Add centerlines
-        n_lanes = len(lane_marking_offsets) - 1
-        for i_lanelet in range(n_lanes):
-            left_line_offset = lane_marking_offsets[i_lanelet]
-            right_line_offset = lane_marking_offsets[i_lanelet + 1]
-            centerline_offset = round(
-                left_line_offset + (right_line_offset - left_line_offset) / 2, 2
-            )
-            centerline_x = x_values.copy().tolist()
-            centerline_y = [centerline_offset] * len(centerline_x)
-            linestring = [centerline_x, centerline_y]
-
-            all_linestrings[centerline_offset] = linestring
-        all_linestrings = dict(sorted(all_linestrings.items()))
-
-        if road_part == "lower":
-            ref_line_y = max(lane_marking_offsets)  # leftmost in driving direction
-            ref_line = all_linestrings[ref_line_y]
-            offset_lines = {
-                abs(round(offset - ref_line_y, 2)): linestring
-                for offset, linestring in all_linestrings.items()
-                if offset != ref_line_y
-            }
-            offset_lines = dict(sorted(offset_lines.items()))
-            x0 = x_min
-            y0 = ref_line_y
-        else:
-            # Invert all linestrings
-            inverted_linestrings = {}
-            for offset, linestring in all_linestrings.items():
-                xvals = np.flip(linestring[0])
-                new_linestring = [xvals.tolist(), linestring[1]]
-                inverted_linestrings[offset] = new_linestring
-
-            ref_line_y = min(lane_marking_offsets)  # leftmost in driving direction
-            ref_line = inverted_linestrings[ref_line_y]
-            offset_lines = {
-                abs(round(ref_line_y - offset, 2)): linestring
-                for offset, linestring in inverted_linestrings.items()
-                if offset != ref_line_y
-            }
-            offset_lines = dict(sorted(offset_lines.items()))
-            x0 = x_max
-            y0 = ref_line_y
-
-        polyline_segment = PolylineSegment(ref_line=ref_line, offset_lines=offset_lines)
-
-        goal_position_s = x_max + goal_position_from_end_of_road
-        lane_width = None
-
-        road = cls(
-            n_lanes=n_lanes,
-            lane_width=lane_width,
-            segments=[polyline_segment],
-            speed_limit=speed_limit,
-            goal_position=goal_position_s,
-            x0=x0,
-            y0=y0,
-        )
-
-        return road
 
     @property
     def n_lanes(self) -> int:
@@ -319,99 +216,13 @@ class SyntheticRoad(Renderable):
     def lanelet_map(self) -> LaneletMap:
         return self._lanelet_map
 
-    @staticmethod
-    def linestring2array(linestring: LineString3d) -> np.array:
-        return np.array([[pt.x, pt.y] for pt in linestring])
-
-    @staticmethod
-    def array2linestring(array: np.array) -> LineString3d:
-        return LineString3d(
-            getId(), [Point3d(getId(), pt[0], pt[1], 0.0) for pt in array]
-        )
-
-    @staticmethod
-    def from_frenet_to_cart(
-        linestring: LineString3d, s: np.ndarray, t: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray]:
-        def check_array(array_or_number: np.ndarray | float) -> np.ndarray:
-            if isinstance(array_or_number, (float, int)):
-                array_or_number = np.array([array_or_number]).astype(float)
-            return array_or_number
-
-        s = check_array(s)
-        t = check_array(t)
-
-        if s.shape != t.shape:
-            raise Exception
-
-        linestring2d = lanelet2.geometry.to2D(linestring)
-
-        x = np.zeros_like(s)
-        y = np.zeros_like(t)
-
-        for i in range(s.shape[0]):
-            arc = lanelet2.geometry.ArcCoordinates()
-            arc.length = s[i]
-            arc.distance = t[i]
-
-            cart = lanelet2.geometry.fromArcCoordinates(linestring2d, arc)
-
-            x[i] = cart.x
-            y[i] = cart.y
-
-        if x.shape[0] == 1:
-            x = x[0]
-            y = y[0]
-
-        return x, y
-
-    @staticmethod
-    def from_cart_to_frenet(
-        linestring: LineString3d, x: np.ndarray, y: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray]:
-        def check_array(array_or_number: np.ndarray | float) -> np.ndarray:
-            if isinstance(array_or_number, (float, int)):
-                array_or_number = np.array([array_or_number]).astype(float)
-            return array_or_number
-
-        x = check_array(x)
-        y = check_array(y)
-
-        if x.shape != y.shape:
-            raise Exception
-
-        linestring2d = lanelet2.geometry.to2D(linestring)
-
-        s = np.zeros_like(x)
-        t = np.zeros_like(y)
-
-        for i in range(x.shape[0]):
-            arc = lanelet2.geometry.toArcCoordinates(
-                linestring2d, BasicPoint2d(x[0], y[0])
-            )
-
-            s[i] = arc.length
-            t[i] = arc.distance
-
-        if s.shape[0] == 1:
-            s = s[0]
-            t = t[0]
-
-        return s, t
-
-    def find_lanelet_id_by_position(self, x: float, y: float) -> int:
-        candidates = findNearest(self._lanelet_map.laneletLayer, BasicPoint2d(x, y), 1)
-
-        if len(candidates) == 0 or candidates[0][0] != 0:
-            return None
-
-        llt_id = candidates[0][1].id
-
-        return llt_id
+    @property
+    def origin_lat(self) -> float:
+        return self._ORIGIN_LAT
 
     @property
-    def goal_position(self) -> float:
-        return self._goal_position
+    def origin_lon(self) -> float:
+        return self._ORIGIN_LON
 
     @property
     def ref_line(self) -> np.ndarray:
@@ -558,12 +369,33 @@ class SyntheticRoad(Renderable):
             # ref_line and offset_lines are already available, no need to do anything here
             pass
 
-    def create_opendrive_map(self, map_name: str) -> xodr.OpenDrive:
+    def from_llt_local_to_opendrive_local(
+        self, x_llt2: float, y_llt2: float, heading_llt2: float | None = None
+    ) -> tuple[float, float] | tuple[float, float, float]:
+        if heading_llt2 is None:
+            return x_llt2, y_llt2
+
+        return x_llt2, y_llt2, heading_llt2
+
+    def save_opendrive_map(self, save_dir: str | Path, map_name: str) -> Path:
         """
         Create an opendrive map from the road object.
         Use odrviewer.io to visualize it.
         """
 
+        save_dir = Path(save_dir)
+        if not save_dir.is_dir():
+            msg = "Save directory does not exist"
+            raise FileNotFoundError(msg)
+
+        odr = self._create_opendrive_map(map_name)
+
+        odr_path = save_dir / f"{map_name}.xodr"
+        odr.write_xml(str(odr_path))
+
+        return odr_path
+
+    def _create_opendrive_map(self, map_name: str) -> xodr.OpenDrive:
         if self._segments == self.ALLOWED_SEGMENT_SEQUENCES[2]:
             raise NotImplementedError
 
@@ -606,7 +438,7 @@ class SyntheticRoad(Renderable):
 
         return odr
 
-    def save_lanelet2_map(self, result_dir: str | Path, map_name: str) -> None:
+    def save_lanelet2_map(self, result_dir: str | Path, map_name: str) -> Path:
         result_dir = Path(result_dir)
 
         lanelet2_map_file = result_dir / f"{map_name}.osm"
@@ -615,83 +447,14 @@ class SyntheticRoad(Renderable):
 
         lanelet2.io.write(str(lanelet2_map_file), self._lanelet_map, projector)
 
-    def _plot_in_ax(  # noqa: PLR0912
+        return lanelet2_map_file
+
+    def _plot_in_ax(
         self, ax: plt.Axes, use_lanelet: bool = True, verbose: bool = False
     ) -> None:
         # Start actual plotting
         if use_lanelet:
-            plotted_lanelines = []
-
-            for i, lanelet in enumerate(self._lanelet_map.laneletLayer):
-                leftbound = self.linestring2array(lanelet.leftBound)
-                centerline = self.linestring2array(lanelet.centerline)
-                rightbound = self.linestring2array(lanelet.rightBound)
-
-                if verbose:
-                    ax.plot(
-                        leftbound[:, 0],
-                        leftbound[:, 1],
-                        "--",
-                        label=f"{lanelet.id} (left)",
-                    )
-                    ax.plot(
-                        centerline[:, 0],
-                        centerline[:, 1],
-                        label=f"{lanelet.id} (center)",
-                    )
-                    ax.plot(
-                        rightbound[:, 0],
-                        rightbound[:, 1],
-                        label=f"{lanelet.id} (right)",
-                    )
-
-                    ax.text(leftbound[-1, 0], leftbound[-1, 1], f"{lanelet.id} (left)")
-                    ax.text(
-                        centerline[-1, 0], centerline[-1, 1], f"{lanelet.id} (center)"
-                    )
-                    ax.text(
-                        rightbound[-1, 0], rightbound[-1, 1], f"{lanelet.id} (right)"
-                    )
-
-                else:
-                    left_label = None
-                    right_label = None
-                    if i == 0:
-                        left_label = "Lane line"
-                        right_label = None
-
-                    clr = "k"
-
-                    # Find shape (dashed/solid)
-                    left_shape = "-"
-                    if lanelet.leftBound.attributes["subtype"] == "dashed":
-                        left_shape = "--"
-
-                    right_shape = "-"
-                    if lanelet.rightBound.attributes["subtype"] == "dashed":
-                        right_shape = "--"
-
-                    if lanelet.leftBound not in plotted_lanelines:
-                        ax.plot(
-                            leftbound[:, 0],
-                            leftbound[:, 1],
-                            left_shape,
-                            color=clr,
-                            label=left_label,
-                            zorder=10,
-                        )
-                    if lanelet.rightBound not in plotted_lanelines:
-                        ax.plot(
-                            rightbound[:, 0],
-                            rightbound[:, 1],
-                            right_shape,
-                            color=clr,
-                            label=right_label,
-                            zorder=10,
-                        )
-
-                    plotted_lanelines.append(lanelet.leftBound)
-                    plotted_lanelines.append(lanelet.rightBound)
+            super()._plot_in_ax(ax)
 
         elif verbose:
             colors = ["g", "b", "r"]
@@ -737,27 +500,6 @@ class SyntheticRoad(Renderable):
             # Plot all other
             for line in self.offset_lines.values():
                 ax.plot(line[:, 0], line[:, 1], "k-", zorder=10)
-
-        # Plot goal position
-        s_goal = self._goal_position
-        all_t_offsets = sorted(self._overall_offset_lines.keys())
-        highest_t = all_t_offsets[-1]
-
-        x_low, y_low = self.from_frenet_to_cart(
-            self.array2linestring(self._overall_ref_line), s_goal, 0
-        )
-        x_high, y_high = self.from_frenet_to_cart(
-            self.array2linestring(self._overall_ref_line), s_goal, -highest_t
-        )
-
-        ax.plot(
-            [x_low, x_high],
-            [y_low, y_high],
-            "g-",
-            zorder=10,
-            linewidth=2 * mpl.rcParams["lines.linewidth"],
-            label="Goal",
-        )
 
     def _format_ax(
         self, ax: plt.Axes, use_lanelet: bool = True, verbose: bool = False

@@ -10,7 +10,6 @@
         }
         ],
         "speed_limit": 120.0,
-        "goal_position": 250,
         "x0": 0,
         "y0": 0
     },
@@ -18,22 +17,24 @@
         "lanelet_id": 1000,
         "s0": 50,
         "t0": 0,
-        "v0": 27.78,
-        "vehicle_type_name": "medium"
+        "v0": 10,
+        "vehicle_type_name": "medium",
+        "target_s": 250,
+        "target_t": 0
     },
     "vehicles": [
         {
             "vehicle_id": 0,
             "lanelet_id": 1001,
-            "s0": 50.0,
+            "s0": 90.0,
             "t0": 0,
             "v0": 10,
-            "a0": 0,
-            "a_delay": 0,
+            "a0": -1,
+            "a_delay": 3,
             "a_profile": "constant",
-            "lc_direction": 0,
-            "lc_delay": 0,
-            "lc_duration": 3,
+            "lc_direction": -1,
+            "lc_delay": 1,
+            "lc_duration": 4,
             "vehicle_type_name": "medium"
         }
     ],

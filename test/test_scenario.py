@@ -76,12 +76,10 @@ class TestScenario:
         duration = 10
 
         # Create road
-        road = SyntheticRoad(
-            3, 3.75, [StraightSegment(500, heading=0)], goal_position=450
-        )
+        road = SyntheticRoad(3, 3.75, [StraightSegment(500, heading=0)])
 
         # Create ego configuration
-        ego_configuration = EgoConfiguration(1000, 50, 0, 27.78)
+        ego_configuration = EgoConfiguration(1000, 50, 0, 27.78, 450, 0)
 
         # Create vehicles
 
@@ -140,12 +138,10 @@ class TestScenario:
         duration = 10
 
         # Create road
-        road = SyntheticRoad(
-            5, 3.75, [StraightSegment(500, heading=0)], goal_position=450
-        )
+        road = SyntheticRoad(5, 3.75, [StraightSegment(500, heading=0)])
 
         # Create ego configuration
-        ego_configuration = EgoConfiguration(1000, 50, 0, 27.78)
+        ego_configuration = EgoConfiguration(1000, 50, 0, 27.78, 450, 0)
 
         # Create vehicles
 
@@ -345,12 +341,10 @@ class TestScenario:
         duration = 10
 
         # Create road
-        road = SyntheticRoad(
-            3, 3.75, [StraightSegment(500, heading=0)], goal_position=450
-        )
+        road = SyntheticRoad(3, 3.75, [StraightSegment(500, heading=0)])
 
         # Create ego configuration
-        ego_configuration = EgoConfiguration(1000, 50, 0, 27.78)
+        ego_configuration = EgoConfiguration(1000, 50, 0, 27.78, 450, 0)
 
         # Create vehicles
 
@@ -384,11 +378,12 @@ class TestScenario:
         config_json = self.DATA_DIR / "scenario_standstill.json"
         scenario = Scenario.from_x(config_json)
 
-        assert np.all(scenario.vehicles[0].heading) != 0
+        assert np.all(scenario.vehicles[0].heading != 0)
         self._get_cr_interface(scenario)
+
         self._check_feasible(scenario)
 
 
 if __name__ == "__main__":
     tester = TestScenario()
-    tester.test_heading_calcuation_standstill()
+    tester.test_scenario_creation()

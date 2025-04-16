@@ -3,7 +3,7 @@ from pathlib import Path
 from simple_scenario import Scenario
 
 
-def main(config: str) -> None:
+def main(config: str) -> Path:
     result_dir = Path(__file__).parent / "results"
     result_dir.mkdir(exist_ok=True)
 
@@ -12,6 +12,8 @@ def main(config: str) -> None:
     scenario.render(result_dir)
     scenario.save(result_dir, mode="openx")
     scenario.save(result_dir, mode="lanelet2")
+
+    return result_dir
 
 
 if __name__ == "__main__":

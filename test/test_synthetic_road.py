@@ -21,7 +21,7 @@ class TestSyntheticRoad:
 
         straight_segment = StraightSegment(100)
 
-        road = SyntheticRoad(3, 3.75, [straight_segment], goal_position=80)
+        road = SyntheticRoad(3, 3.75, [straight_segment])
 
         plot_name = "short_road"
 
@@ -144,7 +144,7 @@ class TestSyntheticRoad:
 
         straight_segment = StraightSegment(1000)
 
-        road = SyntheticRoad(3, 3.75, [straight_segment], goal_position=80)
+        road = SyntheticRoad(3, 3.75, [straight_segment])
 
         plot_name = "long_road"
 

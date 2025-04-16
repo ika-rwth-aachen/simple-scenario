@@ -17,7 +17,12 @@ def hello_world() -> None:
 
 
 @app.command()
-def create(config_file: str, result_dir: str = None, osc: bool = True) -> None:  # noqa: RUF013
+def create(
+    config_file: str,
+    result_dir: str = None,  # noqa: RUF013
+    osc: bool = True,
+    lanelet2: bool = False,
+) -> None:
     logger.configure(handlers=[{"sink": sys.stdout, "level": "WARNING"}])
 
     config_file = Path(config_file)
@@ -43,6 +48,11 @@ def create(config_file: str, result_dir: str = None, osc: bool = True) -> None: 
         xosc_file = scenario_result_dir / f"{scenario.id}.xosc"
 
         print(f"To run use: esmini --window --osc {xosc_file.resolve()}")
+
+    if lanelet2:
+        print(f"Create lanelet2 map at: {scenario_result_dir.resolve()}/")
+
+        scenario.save(scenario_result_dir, mode="lanelet2")
 
 
 if __name__ == "__main__":

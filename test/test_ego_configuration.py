@@ -15,7 +15,7 @@ class TestEgoConfiguration:
 
         road = SyntheticRoad(3, 3.75, [StraightSegment(200)])
 
-        ego_configuration = EgoConfiguration(1000, 50, 0, 27.78)
+        ego_configuration = EgoConfiguration(1000, 50, 0, 27.78, 150, 0)
 
         ego_configuration.compile(road)
 

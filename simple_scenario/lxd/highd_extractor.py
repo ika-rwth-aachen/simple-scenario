@@ -19,7 +19,7 @@ if LXD_AVAILABLE:
     from lxd_io import Dataset
 
 from .. import EgoConfiguration, Vehicle, Scenario
-from ..road import SyntheticRoad
+from ..road import SyntheticRoad, PolylineSegment
 
 
 class HighdExtractor:
@@ -31,12 +31,18 @@ class HighdExtractor:
         self._dataset = Dataset(dataset_dir)
 
         self._lower_roads_per_recording = {}
+        self._lower_road_goal_positions_per_recording = {}
         self._lower_road_wrappers_per_recording = {}
         self._upper_roads_per_recording = {}
+        self._upper_road_goal_positions_per_recording = {}
         self._upper_road_wrappers_per_recording = {}
 
         self._default_speed_limit = 130
         self._start_line_s = 500 + 50  # 500 m (because the road starts at -500 m)
+
+    @property
+    def dataset(self) -> Dataset:
+        return self._dataset
 
     def extract_simple_scenarios(self) -> dict[int, Generator[Scenario]]:
         all_scenarios = {}
@@ -101,15 +107,19 @@ class HighdExtractor:
 
         # Create Road objects
         if recording_id not in self._lower_roads_per_recording:
-            lower_road = SyntheticRoad.from_highd_parameters(
-                recording.get_meta_data("lowerLaneMarkings"),
-                "lower",
-                speed_limit=speed_limit,
+            lower_road, lower_road_goal_position_s = (
+                self.create_road_from_highd_parameters(
+                    recording.get_meta_data("lowerLaneMarkings"),
+                    "lower",
+                    speed_limit=speed_limit,
+                )
             )
-            upper_road = SyntheticRoad.from_highd_parameters(
-                recording.get_meta_data("upperLaneMarkings"),
-                "upper",
-                speed_limit=speed_limit,
+            upper_road, upper_road_goal_position_s = (
+                self.create_road_from_highd_parameters(
+                    recording.get_meta_data("upperLaneMarkings"),
+                    "upper",
+                    speed_limit=speed_limit,
+                )
             )
 
             # Create CR lanelet networks and wrap them
@@ -121,13 +131,25 @@ class HighdExtractor:
             )
 
             self._lower_roads_per_recording[recording_id] = lower_road
+            self._lower_road_goal_positions_per_recording[recording_id] = (
+                lower_road_goal_position_s
+            )
             self._lower_road_wrappers_per_recording[recording_id] = lower_road_wrapper
             self._upper_roads_per_recording[recording_id] = upper_road
+            self._upper_road_goal_positions_per_recording[recording_id] = (
+                upper_road_goal_position_s
+            )
             self._upper_road_wrappers_per_recording[recording_id] = upper_road_wrapper
         else:
             lower_road = self._lower_roads_per_recording[recording_id]
+            lower_road_goal_position_s = self._lower_road_goal_positions_per_recording[
+                recording_id
+            ]
             lower_road_wrapper = self._lower_road_wrappers_per_recording[recording_id]
             upper_road = self._upper_roads_per_recording[recording_id]
+            upper_road_goal_position_s = self._upper_road_goal_positions_per_recording[
+                recording_id
+            ]
             upper_road_wrapper = self._upper_road_wrappers_per_recording[recording_id]
 
         track = recording.get_track(track_id)
@@ -147,10 +169,12 @@ class HighdExtractor:
         if ego_driving_direction == 1:
             relevant_road_name = "upper"
             relevant_road = upper_road
+            relevant_road_goal_position = upper_road_goal_position_s
             relevant_wrapper = upper_road_wrapper
         elif ego_driving_direction == 2:
             relevant_road_name = "lower"
             relevant_road = lower_road
+            relevant_road_goal_position = lower_road_goal_position_s
             relevant_wrapper = lower_road_wrapper
         else:
             msg = f"drivingDirection should be 1 (upper road) or 2 (lower road), but not {ego_driving_direction}"
@@ -178,7 +202,7 @@ class HighdExtractor:
 
         if (
             first_position_s > self._start_line_s
-            or last_position_s < relevant_road.goal_position
+            or last_position_s < relevant_road_goal_position
         ):
             logger.info(
                 f"Recording {recording_id:02d}: Skip track (id={track_id}), because it is too short."
@@ -194,7 +218,7 @@ class HighdExtractor:
         )
 
         ego_start_idx = np.where(ego_ref_frenet[:, 0] > self._start_line_s)[0][0]
-        ego_end_idx = np.where(ego_ref_frenet[:, 0] > relevant_road.goal_position)[0][0]
+        ego_end_idx = np.where(ego_ref_frenet[:, 0] > relevant_road_goal_position)[0][0]
 
         ego_start_position_x = local_trajectory[ego_start_idx, 0]
         ego_start_position_y = local_trajectory[ego_start_idx, 1]
@@ -213,7 +237,12 @@ class HighdExtractor:
         ego_start_v = ego_v[ego_start_idx]
 
         ego_configuration = EgoConfiguration(
-            ego_start_llt_id, ego_start_llt_s, ego_start_llt_t, ego_start_v
+            ego_start_llt_id,
+            ego_start_llt_s,
+            ego_start_llt_t,
+            ego_start_v,
+            target_s=lower_road_goal_position_s,
+            target_t=0,
         )
 
         # -- Vehicles --
@@ -371,3 +400,97 @@ class HighdExtractor:
         )
 
         return scenario_id, scenario, None
+
+    def create_road_from_highd_parameters(
+        self,
+        lane_markings_str: str,
+        road_part: str,
+        speed_limit: int,
+        goal_position_from_end_of_road: float = -100,
+    ) -> SyntheticRoad:
+        """
+        Create a Road object from the highD map parameters.
+        """
+
+        possible_road_parts = ("lower", "upper")
+
+        if road_part not in possible_road_parts:
+            raise ValueError
+
+        dx = 5
+        x_buffer = 500
+        x_min = -x_buffer
+        x_max = 450 + x_buffer
+        x_values = np.arange(x_min, x_max + dx, dx).astype(float)
+
+        lane_marking_offsets = [-float(elem) for elem in lane_markings_str.split(";")]
+
+        all_linestrings = {}
+
+        for offset in lane_marking_offsets:
+            linestring_points_x = x_values.copy().tolist()
+            linestring_points_y = [offset] * len(linestring_points_x)
+
+            linestring = [linestring_points_x, linestring_points_y]
+            all_linestrings[offset] = linestring
+
+        # Add centerlines
+        n_lanes = len(lane_marking_offsets) - 1
+        for i_lanelet in range(n_lanes):
+            left_line_offset = lane_marking_offsets[i_lanelet]
+            right_line_offset = lane_marking_offsets[i_lanelet + 1]
+            centerline_offset = round(
+                left_line_offset + (right_line_offset - left_line_offset) / 2, 2
+            )
+            centerline_x = x_values.copy().tolist()
+            centerline_y = [centerline_offset] * len(centerline_x)
+            linestring = [centerline_x, centerline_y]
+
+            all_linestrings[centerline_offset] = linestring
+        all_linestrings = dict(sorted(all_linestrings.items()))
+
+        if road_part == "lower":
+            ref_line_y = max(lane_marking_offsets)  # leftmost in driving direction
+            ref_line = all_linestrings[ref_line_y]
+            offset_lines = {
+                abs(round(offset - ref_line_y, 2)): linestring
+                for offset, linestring in all_linestrings.items()
+                if offset != ref_line_y
+            }
+            offset_lines = dict(sorted(offset_lines.items()))
+            x0 = x_min
+            y0 = ref_line_y
+        else:
+            # Invert all linestrings
+            inverted_linestrings = {}
+            for offset, linestring in all_linestrings.items():
+                xvals = np.flip(linestring[0])
+                new_linestring = [xvals.tolist(), linestring[1]]
+                inverted_linestrings[offset] = new_linestring
+
+            ref_line_y = min(lane_marking_offsets)  # leftmost in driving direction
+            ref_line = inverted_linestrings[ref_line_y]
+            offset_lines = {
+                abs(round(ref_line_y - offset, 2)): linestring
+                for offset, linestring in inverted_linestrings.items()
+                if offset != ref_line_y
+            }
+            offset_lines = dict(sorted(offset_lines.items()))
+            x0 = x_max
+            y0 = ref_line_y
+
+        polyline_segment = PolylineSegment(ref_line=ref_line, offset_lines=offset_lines)
+
+        goal_position_s = x_max + goal_position_from_end_of_road
+        lane_width = None
+
+        road = SyntheticRoad(
+            n_lanes=n_lanes,
+            lane_width=lane_width,
+            segments=[polyline_segment],
+            speed_limit=speed_limit,
+            x0=x0,
+            y0=y0,
+        )
+
+        return road, goal_position_s

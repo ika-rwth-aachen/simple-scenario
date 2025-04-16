@@ -3,9 +3,9 @@ import pytest
 
 from pathlib import Path
 
-from simple_scenario import LXD_AVAILABLE
+from simple_scenario import CR_AVAILABLE, LXD_AVAILABLE
 
-if LXD_AVAILABLE:
+if LXD_AVAILABLE and CR_AVAILABLE:
     from simple_scenario.lxd import HighdExtractor
 
 
@@ -15,7 +15,10 @@ class TestHighdRoadCreation:
     RESULT_DIR = Path(__file__).parent / "results" / "test_highd_road_creation"
     RESULT_DIR.mkdir(exist_ok=True)
 
-    @pytest.mark.skipif(not LXD_AVAILABLE, reason="lxd extra is not installed")
+    @pytest.mark.skipif(
+        not (CR_AVAILABLE and LXD_AVAILABLE),
+        reason="commonroad and lxd extras are not installed",
+    )
     def test_highd_road_creation(self):
         result_dir = self.RESULT_DIR
         dataset_dir = self.DATA_DIR

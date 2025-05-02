@@ -24,9 +24,9 @@ pip install simple-scenario
 
 The python API supports various ways of generating and interacting with test scenarios.
 
-Please conduct the `tutorials/A_01_getting_started.ipynb` to learn about the basic usage of `simple-scenario`.
+Please conduct the [tutorials/A_01_getting_started.ipynb](https://github.com/ika-rwth-aachen/simple-scenario/blob/main/tutorials/A_01_getting_started.ipynb) to learn about the basic usage of `simple-scenario`.
 
-Please find more in-depth examples in the `test/` folder (E.g., `test/test_scenario.py` shows which input formats can be used).
+Please find more in-depth examples in the [test/](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/test) folder (E.g., [test/test_scenario.py](https://github.com/ika-rwth-aachen/simple-scenario/blob/main/test/test_scenario.py) shows which input formats can be used).
 
 > :bulb: *Have a look at the [Dev](#dev) section of this readme to find out how to setup the project and run the tutorial notebooks and tests.*
 
@@ -56,7 +56,7 @@ pip install simple-scenario[commonroad]
 
 Enables advanced features like feasibility checking of the scenario (powered by the [CommonRoad Drivability Checker](https://commonroad.in.tum.de/tools/drivability-checker)) and exporting the scenario to the [CommonRoad](https://commonroad.in.tum.de/) (CR) format.
 
-Please conduct the `tutorials/B_01_commonroad_extra.ipynb` for more details.
+Please conduct the [tutorials/B_01_commonroad_extra.ipynb](https://github.com/ika-rwth-aachen/simple-scenario/blob/main/tutorials/B_01_commonroad_extra.ipynb) for more details.
 
 ## lxd-extra
 
@@ -68,7 +68,7 @@ Enables reading [leveLXData](https://levelxdata.com/) datasets through [lxd-io](
 
 > :warning: *Currently only the [highD dataset](https://highd-dataset.com) is supported*
 
-Please conduct the `tutorials/C_01_lxd_extra.ipynb` for more details.
+Please conduct the [tutorials/C_01_lxd_extra.ipynb](https://github.com/ika-rwth-aachen/simple-scenario/blob/main/tutorials/C_01_lxd_extra.ipynb) for more details.
 
 # Dev
 
@@ -109,7 +109,7 @@ and run the tests
 $ uv run pytest
 ```
 
-To run the notebooks in the `tutorials/` folder in VSCode, select the `.venv`'s as the kernel (see [here](https://docs.astral.sh/uv/guides/integration/jupyter/#using-jupyter-from-vs-code) for more info).
+To run the notebooks in the [tutorials/](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/tutorials) folder in VSCode, select the `.venv`'s as the kernel (see [here](https://docs.astral.sh/uv/guides/integration/jupyter/#using-jupyter-from-vs-code) for more info).
 
 ## Without uv
 
@@ -135,10 +135,8 @@ $ pytest
 
 This package is developed as part of the [SYNERGIES project](https://synergies-ccam.eu).
 
-<!-- <img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/synergies.svg" style="width:2in" /> -->
-<img src="assets/synergies.svg" style="width:2in" />
+<img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/synergies.svg" style="width:2in" />
 
 Funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or European Climate, Infrastructure and Environment Executive Agency (CINEA). Neither the European Union nor the granting authority can be held responsible for them.
 
-<!-- <img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/funded_by_eu.svg" style="width:4in" /> -->
-<img src="assets/funded_by_eu.svg" style="width:4in" />
+<img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/funded_by_eu.svg" style="width:4in" />

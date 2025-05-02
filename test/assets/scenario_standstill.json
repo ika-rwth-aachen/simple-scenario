@@ -1,0 +1,49 @@
+{
+    "scenario_id": "scenario_standstill",
+    "road": {
+      "n_lanes": 3,
+      "lane_width": 3.75,
+      "segments": [
+        {
+          "length": 100,
+          "heading": 0.0
+        },
+        {
+          "r": 3
+        },
+        {
+          "length": 1000,
+          "radius": 900
+        }
+      ],
+      "speed_limit": 120,
+      "goal_position": 650,
+      "x0": 0,
+      "y0": 0
+    },
+    "ego_configuration": {
+      "lanelet_id": 1002,
+      "s0": 50,
+      "t0": 0,
+      "v0": 27.78,
+      "vehicle_type_name": "medium"
+    },
+    "vehicles": [
+      {
+        "vehicle_id": 1000,
+        "lanelet_id": 1002,
+        "s0": 161,
+        "t0": 0,
+        "v0": 27.78,
+        "a0": -1.5999999999999996,
+        "a_delay": 1.5,
+        "a_profile": "constant",
+        "lc_direction": -1,
+        "lc_delay": 0.0,
+        "lc_duration": 19.0,
+        "vehicle_type_name": "medium"
+      }
+    ],
+    "duration": 20,
+    "dt": 0.1
+}

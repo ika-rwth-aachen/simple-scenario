@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+        extra-string:
+          - ""
+          - "--extra commonroad"
+          - "--extra lxd"
+          - "--all-extras"
+        exclude:  # commonroad-extra only works with python 3.8 atm
+          - python-version: "3.9"
+            extra-string: "--extra commonroad"
+          - python-version: "3.10"
+            extra-string: "--extra commonroad"
+          - python-version: "3.11"
+            extra-string: "--extra commonroad"
+          - python-version: "3.12"
+            extra-string: "--extra commonroad"
+          - python-version: "3.9"
+            extra-string: "--all-extras"
+          - python-version: "3.10"
+            extra-string: "--all-extras"
+          - python-version: "3.11"
+            extra-string: "--all-extras"
+          - python-version: "3.12"
+            extra-string: "--all-extras"
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        # Install a specific version of uv.
+        enable-cache: true
+        version: "0.6.12"
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install the project
+      run: uv sync ${{ matrix.extra-string }} --dev
+
+    - name: Run tests with coverage
+      run: |
+        uv run pytest --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test | tee pytest-coverage.log
+        exit_code=${PIPESTATUS[0]}
+        exit $exit_code
+
+    - name: Upload coverage files
+      uses: actions/upload-artifact@v4
+      if: ${{ matrix.python-version == '3.8' && matrix.extra-string == '--all-extras' }}
+      with:
+        name: coverage-files
+        path: |
+          coverage.xml
+          pytest-coverage.log
+          htmlcov/
+        compression-level: 9
+
+  lint-and-format:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        # Install a specific version of uv.
+        enable-cache: true
+        version: "0.6.12"
+
+    - name: "Set up Python"
+      uses: actions/setup-python@v5
+      with:
+        python-version-file: ".python-version"
+
+    - name: Install the project
+      run: uv sync --all-extras --dev
+
+    - name: Run pre-commit hooks
+      run: |
+        uv run pre-commit run --all-files || (
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Apply Ruff formatting"
+          git push
+        )

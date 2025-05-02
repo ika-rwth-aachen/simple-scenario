@@ -1,0 +1,2 @@
+class FromDataConfigError(Exception):
+    pass

@@ -1,0 +1,186 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "simple_scenario"
+authors = [
+    {name = "Lennart Vater", email = "lennart.vater@ika.rwth-aachen.de"}
+]
+maintainers = [
+    {name = "Lennart Vater", email = "lennart.vater@ika.rwth-aachen.de"}
+]
+description = "Quickly generate prototype test scenarios for automated driving"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+version = "0.10.0"
+dependencies = [
+    "commonroad-vehicle-models==3.0.2",
+    "lanelet2>=1.2.2",
+    "loguru>=0.7.3",
+    "matplotlib>=3.7.5",
+    "numpy>=1.24.4",
+    "pillow>=10.4.0",
+    "pyclothoids>=0.1.5",
+    "scenariogeneration>=0.14.9",
+    "typer>=0.15.2",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.optional-dependencies]
+commonroad = [
+    "commonroad-drivability-checker==2022.1",
+    "commonroad-io==2022.1",
+    "shapely==1.8.5.post1",
+]
+lxd = [
+    "lxd-io>=0.4.5",
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.6.1",
+    "ipykernel>=6.29.5",
+    "nbval>=0.11.0",
+    "pre-commit>=3.5.0",
+    "pycobertura>=3.3.2",
+    "pytest>=8.3.5",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.10.0",
+]
+build = [
+    "build>=1.2.2.post1",
+    "twine>=6.1.0",
+]
+
+[tool.setuptools]
+packages = [
+    "simple_scenario",
+    "simple_scenario.commonroad_interface",
+    "simple_scenario.lanelet_network_wrapper",
+    "simple_scenario.lxd",
+    "simple_scenario.rendering",
+    "simple_scenario.road",
+]
+
+[tool.setuptools.package-data]
+simple_scenario = []
+
+[project.scripts]
+simple-scenario = "simple_scenario.cli:app"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra --nbval"
+testpaths = [
+    "test",
+    "tutorials",
+]
+
+[tool.ruff]
+exclude = [
+    "simple_scenario/lanelet_network_wrapper/traffic_sign_interpreter_fixed.py"
+]
+
+[tool.ruff.lint]
+select = [
+    "AIR001",
+    "YTT",
+    "ANN",
+    "ASYNC",
+    "S",
+    "BLE",
+    "B",
+    "A",
+    "COM",
+    "C",
+    "DTZ",
+    "T",
+    "DJ",
+    "EM",
+    "ERA001",
+    "EXE",
+    "FA",
+    "INT",
+    "ISC",
+    "ICN",
+    "LOG",
+    "G",
+    "INP",
+    "PIE",
+    "PYI",
+    "PT",
+    "Q",
+    "RSE",
+    "RET",
+    "SLF",
+    "SIM",
+    "SLOT",
+    "TID",
+    "TCH",
+    "ARG",
+    "PTH",
+    "FLY",
+    "I",
+    "NPY",
+    "N",
+    "PD",
+    "PERF",
+    "E",
+    "W",
+    "F",
+    "PGH",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "UP",
+    "FURB",
+    "RUF",
+    "TRY",
+    "TD",
+]
+ignore = [
+    "ANN002",
+    "ANN003",
+    "PLR2004",
+    "PLR0913",
+    "PLR0915",
+    "E501",
+    "B019",
+    "D",
+    "I001",
+    "FBT",
+    "RET504",
+    "C901",
+    "SIM108",
+    "FIX",  # Fixes
+    "TRY002",
+    "TRY003",
+    "Q003",
+    "COM812",
+    "SIM103",
+    "TID252",
+    "RUF012",
+    "SIM117",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"_check_extra_availability.py" = ["F401"]
+"test/*.py" = ["F841", "S101", "T201", "ANN"]
+"tutorials/*.ipynb" = ["T201"]
+"simple_scenario/__init__.py" = ["E402"]
+"simple_scenario/cli.py" = ["T201"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:"
+]

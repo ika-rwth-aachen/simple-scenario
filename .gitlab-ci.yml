@@ -1,0 +1,136 @@
+image:
+    name: ubuntu:24.04
+
+stages:
+    - lint
+    - test
+    - package
+
+lint:
+    stage: lint
+    before_script:
+        - apt-get update && apt-get install -y curl build-essential clang
+        - curl -LsSf https://astral.sh/uv/install.sh | sh
+        - source $HOME/.local/bin/env
+        - uv sync --all-extras --dev
+    script:
+        - uv run ruff check --output-format=gitlab --output-file=codequality.json || uv run ruff check --output-format=concise --output-file=codequality.txt || uv run ruff check --output-format=concise
+    artifacts:
+        paths:
+        - public
+        - codequality.*
+        reports:
+            codequality: codequality.json
+        when: always
+        expire_in: '30 days'
+
+test_no_extras:
+    stage: test
+    before_script:
+        - apt-get update && apt-get install -y curl build-essential clang
+        - curl -LsSf https://astral.sh/uv/install.sh | sh
+        - source $HOME/.local/bin/env
+        - uv sync --dev
+    script:
+        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test
+        - uv run pycobertura show --format html --output coverage_cobertura.html coverage.xml
+    artifacts:
+        when: always
+        expire_in: "30 days"
+        reports:
+            junit: report.xml
+            coverage_report:
+                coverage_format: cobertura
+                path: coverage.xml
+        paths:
+            - coverage.xml
+            - htmlcov
+            - coverage_cobertura.html
+            - test/test_simple_scenario/results/test_openx_export
+
+test_lxd_extra:
+    stage: test
+    before_script:
+        - apt-get update && apt-get install -y curl build-essential clang
+        - curl -LsSf https://astral.sh/uv/install.sh | sh
+        - source $HOME/.local/bin/env
+        - uv sync --dev --extra lxd
+    script:
+        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test
+        - uv run pycobertura show --format html --output coverage_cobertura.html coverage.xml
+    artifacts:
+        when: always
+        expire_in: "30 days"
+        reports:
+            junit: report.xml
+            coverage_report:
+                coverage_format: cobertura
+                path: coverage.xml
+        paths:
+            - coverage.xml
+            - htmlcov
+            - coverage_cobertura.html
+            - test/test_simple_scenario/results/test_openx_export
+
+test_commonroad_extra:
+    stage: test
+    before_script:
+        - apt-get update && apt-get install -y curl build-essential clang
+        - curl -LsSf https://astral.sh/uv/install.sh | sh
+        - source $HOME/.local/bin/env
+        - uv sync --dev --extra commonroad
+    script:
+        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test
+        - uv run pycobertura show --format html --output coverage_cobertura.html coverage.xml
+    artifacts:
+        when: always
+        expire_in: "30 days"
+        reports:
+            junit: report.xml
+            coverage_report:
+                coverage_format: cobertura
+                path: coverage.xml
+        paths:
+            - coverage.xml
+            - htmlcov
+            - coverage_cobertura.html
+            - test/test_simple_scenario/results/test_openx_export
+
+test_all_extras:
+    stage: test
+    before_script:
+        - apt-get update && apt-get install -y curl build-essential clang
+        - curl -LsSf https://astral.sh/uv/install.sh | sh
+        - source $HOME/.local/bin/env
+        - uv sync --dev --all-extras
+    script:
+        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test
+        - uv run pycobertura show --format html --output coverage_cobertura.html coverage.xml
+    coverage: '/\d+\%\s*$/'
+    artifacts:
+        when: always
+        expire_in: "30 days"
+        reports:
+            junit: report.xml
+            coverage_report:
+                coverage_format: cobertura
+                path: coverage.xml
+        paths:
+            - coverage.xml
+            - htmlcov
+            - coverage_cobertura.html
+            - test/test_simple_scenario/results/test_openx_export
+
+package:
+    stage: package
+    only:
+        - tags
+    before_script:
+        - apt-get update && apt-get install -y curl build-essential clang
+        - curl -LsSf https://astral.sh/uv/install.sh | sh
+        - source $HOME/.local/bin/env
+        - uv sync --all-extras --group=build
+    script:
+        - uv run -m build
+        - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token uv run -m twine upload --verbose --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
+    rules:

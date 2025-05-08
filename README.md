@@ -34,9 +34,8 @@ Please find more in-depth examples in the [test/](https://github.com/ika-rwth-aa
 
 The CLI supports generating a set of
 
-* an OpenSCENARIO (`.xosc`),
-* an OpenDRIVE (`.xodr`),
-* and a Lanelet2 (`.osm`) file
+* an OpenSCENARIO (`.xosc`)
+* and an OpenDRIVE (`.xodr`) file
 
 for a given `simple-scenario` config file (`.json`) through the following command
 

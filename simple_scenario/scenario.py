@@ -1003,14 +1003,17 @@ class Scenario(Renderable):
         # Create ego controller
         controller_props = xosc.Properties()
         controller_props.add_property(
-            name="module", value="ros_vehicle_control_goal_action.py"
+            name="module", value="ros_vehicle_control_route_service.py"
         )
 
         target_x, target_y = self._road.from_llt_local_to_opendrive_local(
             self._ego_configuration.target_x, self._ego_configuration.target_y
         )
+        initial_speed = self._ego_configuration.v0
+        
         controller_props.add_property(name="target_x", value=str(target_x))
         controller_props.add_property(name="target_y", value=str(target_y))
+        controller_props.add_property(name="initial_speed", value=str(initial_speed))
         controller = xosc.Controller("CustomController", controller_props)
 
         # Add entities

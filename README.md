@@ -74,7 +74,7 @@ Please conduct the [tutorials/C_01_lxd_extra.ipynb](https://github.com/ika-rwth-
 To develop `simple-scenario`, you must first clone the repository.
 
 ```bash
-$ git clone git@gitlab.ika.rwth-aachen.de:fb-fi/scenarios/simple-scenario.git
+$ git clone git@github.com:ika-rwth-aachen/simple-scenario.git
 $ cd simple-scenario
 ```
 

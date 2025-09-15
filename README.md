@@ -8,19 +8,19 @@ Generate all kinds of highway test scenarios from simple config files (see `.jso
 
 :bulb: *To recreate these gifs use: [demo/examples/generate_gifs.py](https://github.com/ika-rwth-aachen/simple-scenario/blob/main/demo/examples/generate_gifs.py).*
 
-Deceleration scenario ([example_scenario1.json](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/demo/examples/example_scenario1.json)):
+*Deceleration* test scenario ([example_scenario1.json](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/demo/examples/example_scenario1.json)):
 
 <img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/example_scenario1.gif">
 
-Cut In scenario ([example_scenario2.json](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/demo/examples/example_scenario2.json)):
+*Cut in* test scenario ([example_scenario2.json](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/demo/examples/example_scenario2.json)):
 
 <img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/example_scenario2.gif">
 
-Deceleration scenario with surrounding traffic ([example_scenario3.json](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/demo/examples/example_scenario3.json)):
+*Deceleration* test scenario with surrounding traffic ([example_scenario3.json](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/demo/examples/example_scenario3.json)):
 
 <img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/example_scenario3.gif">
 
-Cut In scenario with surrounding traffic ([example_scenario4.json](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/demo/examples/example_scenario4.json)):
+*Cut in* test scenario with surrounding traffic ([example_scenario4.json](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/demo/examples/example_scenario4.json)):
 
 <img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/example_scenario4.gif">
 

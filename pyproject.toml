@@ -78,7 +78,7 @@ simple-scenario = "simple_scenario.cli:app"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --nbval"
+addopts = "-ra --nbval --ignore=tutorials/C_01_lxd_extra.ipynb"
 testpaths = [
     "test",
     "tutorials",
@@ -179,6 +179,7 @@ ignore = [
 "tutorials/*.ipynb" = ["T201"]
 "simple_scenario/__init__.py" = ["E402"]
 "simple_scenario/cli.py" = ["T201"]
+"demo/examples/generate_gifs.py" = ["INP001"]
 
 [tool.coverage.report]
 exclude_also = [

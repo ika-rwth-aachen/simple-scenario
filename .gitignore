@@ -164,4 +164,6 @@ results/
 
 report.xml
 
-demo/
+demo/*.xosc
+demo/*.xodr
+demo/**/*.gif

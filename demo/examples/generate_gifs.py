@@ -2,7 +2,7 @@ from pathlib import Path
 from simple_scenario import Scenario
 
 
-def main():
+def main() -> None:
     scenario_dir = Path(__file__).parent
 
     for i in range(4):

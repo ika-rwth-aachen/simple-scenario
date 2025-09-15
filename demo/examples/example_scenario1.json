@@ -1,0 +1,42 @@
+{
+  "scenario_id": "example_scenario1",
+  "road": {
+    "n_lanes": 3,
+    "lane_width": 3.75,
+    "segments": [
+      {
+        "length": 400,
+        "heading": 0.0
+      }
+    ],
+    "speed_limit": 120,
+    "goal_position": 350,
+    "x0": 0,
+    "y0": 0
+  },
+  "ego_configuration": {
+    "lanelet_id": 1000,
+    "s0": 50,
+    "t0": 0,
+    "v0": 27.78,
+    "vehicle_type_name": "medium"
+  },
+  "vehicles": [
+    {
+      "vehicle_id": 0,
+      "lanelet_id": 1000,
+      "s0": 110,
+      "t0": 0,
+      "v0": 22.59,
+      "a0": -4.0,
+      "a_delay": 0.0,
+      "a_profile": "constant",
+      "lc_direction": 0,
+      "lc_delay": 0,
+      "lc_duration": 3,
+      "vehicle_type_name": "medium"
+    }
+  ],
+  "duration": 10,
+  "dt": 0.1
+}

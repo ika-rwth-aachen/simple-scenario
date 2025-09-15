@@ -2,6 +2,28 @@
 
 Quickly generate prototype test scenarios for automated driving.
 
+# Examples
+
+Generate all kinds of highway test scenarios from simple config files (see `.json` files in [demo/examples/](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/demo/examples)).
+
+:bulb: *To recreate these gifs use: `demo/examples/generate_gifs.py`.*
+
+Deceleration scenario (`example_scenario1.json`):
+
+<img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/example_scenario1.gif">
+
+Cut In scenario (`example_scenario2.json`):
+
+<img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/example_scenario2.gif">
+
+Deceleration scenario with surrounding traffic (`example_scenario3.json`):
+
+<img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/example_scenario3.gif">
+
+Cut In scenario with surrounding traffic (`example_scenario4.json`):
+
+<img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/example_scenario4.gif">
+
 # Notice
 
 > [!IMPORTANT]

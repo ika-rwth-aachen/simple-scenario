@@ -24,6 +24,8 @@ Cut In scenario with surrounding traffic ([example_scenario4.json](https://githu
 
 <img src="https://raw.githubusercontent.com/ika-rwth-aachen/simple-scenario/refs/heads/main/assets/example_scenario4.gif">
 
+:bulb: For more examples, see [tutorials/](https://github.com/ika-rwth-aachen/simple-scenario/tree/main/tutorials).
+
 # Notice
 
 > [!IMPORTANT]

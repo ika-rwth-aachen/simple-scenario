@@ -1,5 +1,7 @@
 # simple-scenario
 
+<img src="https://github.com/ika-rwth-aachen/simple-scenario/blob/main/simple-scenario.svg?raw=True" width="400px" style="margin: 10px;">
+
 Quickly generate prototype test scenarios for automated driving.
 
 # Examples

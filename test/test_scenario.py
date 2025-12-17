@@ -50,7 +50,7 @@ class TestScenario:
                 scenario.save(result_dir, mode="openx")
             with pytest.raises(
                 ValueError,
-                match="Cannot save to openx if the scenario has been initialized from data.",
+                match="Cannot save to lanelet2 if the scenario has been initialized from data.",
             ):
                 scenario.save(result_dir, mode="lanelet2")
         else:

@@ -50,6 +50,7 @@ class Vehicle(Renderable):
         inverse_driving_direction: bool = False,
         target_lanelet_id: int | None = None,
         vehicle_type_name: str = "medium",
+        depends_on_ego: bool = False,
         length: float | None = None,
         width: float | None = None,
         from_data: bool = False,
@@ -59,7 +60,7 @@ class Vehicle(Renderable):
         s0: Initial longitudinal position relative to the given lanelet in m
         t0: Initial lateral offset to the center line of the given lanelet in m
         v0: Initial speed in m/s
-        a: Acceleration in m/s^2
+        a0: Acceleration in m/s^2
         a_delay: Time to wait before applying acceleration
         a_profile: How the acceleration changes over time
         lc_direction: Direction of lane change. 0: no lane change, 1: left, -1: right
@@ -70,6 +71,7 @@ class Vehicle(Renderable):
         inverse_driving_direction: If True, the vehicle is driving in the opposite direction
         target_lanelet_id: ID of the target lanelet (used to construct a laneletsequence), if None, lanelet_id is used and the vehicle may only drive in the initial lanelet
         vehicle_type_name: Type of the vehicle
+        depends_on_ego: If True, the vehicle's behavior depends on the ego vehicle movement
         """
 
         if a_profile not in self.ACCELERATION_PROFILES:
@@ -113,6 +115,7 @@ class Vehicle(Renderable):
             "target_lanelet_id": target_lanelet_id,
             "inverse_driving_direction": inverse_driving_direction,
             "vehicle_type_name": vehicle_type_name,
+            "depends_on_ego": depends_on_ego,
             "length": length,
             "width": width,
             "from_data": from_data,
@@ -139,6 +142,7 @@ class Vehicle(Renderable):
         self._target_lanelet_id = target_lanelet_id
 
         self._vehicle_type_name = vehicle_type_name
+        self._depends_on_ego = depends_on_ego
         self._vehicle_parameters = None
         if self._vehicle_type_name == "custom":
             self._length = length
@@ -190,6 +194,7 @@ class Vehicle(Renderable):
         v: np.ndarray,
         a: np.ndarray,
         vehicle_type_name: str = "medium",
+        depends_on_ego: bool = False,
         length: float | None = None,
         width: float | None = None,
     ) -> Vehicle:
@@ -213,6 +218,7 @@ class Vehicle(Renderable):
             heading[0],
             v[0],
             vehicle_type_name=vehicle_type_name,
+            depends_on_ego=depends_on_ego,
             length=length,
             width=width,
             from_data=True,
@@ -262,6 +268,10 @@ class Vehicle(Renderable):
         return self._v0
 
     @property
+    def a0(self) -> float:
+        return self._a0
+
+    @property
     def length(self) -> float:
         return self._length
 
@@ -306,6 +316,10 @@ class Vehicle(Renderable):
     @property
     def vehicle_type_name(self) -> str:
         return self._vehicle_type_name
+
+    @property
+    def depends_on_ego(self) -> bool:
+        return self._depends_on_ego
 
     @property
     def initialized_from_data(self) -> bool:

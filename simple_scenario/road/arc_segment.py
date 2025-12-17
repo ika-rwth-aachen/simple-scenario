@@ -13,8 +13,8 @@ class ArcSegment(RoadSegment):
 
         super().__init__()
 
-        if radius < 900:
-            msg = f"The radius of an arc segment must at least be 900m. Now it is: {radius}"
+        if radius < 100:
+            msg = f"The radius of an arc segment must at least be 100m. Now it is: {radius}"
             raise ValueError(msg)
 
         self._length = length

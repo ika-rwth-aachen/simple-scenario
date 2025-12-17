@@ -4,7 +4,7 @@ from simple_scenario import Scenario
 
 
 def main(config: str) -> Path:
-    result_dir = Path(__file__).parent / "results"
+    result_dir = Path(config).parent
     result_dir.mkdir(exist_ok=True)
 
     scenario = Scenario.from_x(config)

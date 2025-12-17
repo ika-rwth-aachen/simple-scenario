@@ -29,6 +29,7 @@ class EgoConfiguration(Renderable):
         v_lon_max: float | None = None,
         a_lon_min: float | None = None,
         a_lon_max: float | None = None,
+        controller: str | None = None
     ) -> None:
         """
         lanelet_id: ID of initial lanelet the ego vehicle is starting on
@@ -59,6 +60,7 @@ class EgoConfiguration(Renderable):
             "v_lon_max": v_lon_max,
             "a_lon_min": a_lon_min,
             "a_lon_max": a_lon_max,
+            "controller": controller,
         }
 
         self._lanelet_id = lanelet_id
@@ -71,6 +73,7 @@ class EgoConfiguration(Renderable):
         self._target_lanelet_id = (
             target_lanelet_id if target_lanelet_id is not None else lanelet_id
         )
+        self._controller = controller
 
         if vehicle_type_name not in Vehicle.VEHICLE_TYPE_PARAMETERS:
             msg = f"Vehicle type {vehicle_type_name} not found. Available types: {Vehicle.VEHICLE_TYPE_PARAMETERS.keys()}"
@@ -202,6 +205,14 @@ class EgoConfiguration(Renderable):
         """
         self._check_is_compiled()
         return self._target_y
+
+    @property
+    def controller(self) -> str:
+        """
+        controller for ego vehicle.
+        """
+        self._check_is_compiled()
+        return self._controller
 
     def get_boundary_rect(self) -> tuple[float, float, float, float]:
         """

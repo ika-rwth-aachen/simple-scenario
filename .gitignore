@@ -167,3 +167,6 @@ report.xml
 demo/*.xosc
 demo/*.xodr
 demo/**/*.gif
+
+scripts/
+!scripts/*/*/*/config.json

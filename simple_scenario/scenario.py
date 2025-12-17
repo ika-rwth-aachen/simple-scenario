@@ -66,6 +66,8 @@ class Scenario(Renderable):
         dt: float = 0.1,
         from_data: bool = False,
         check_feasibility: bool = False,
+        reference_to_map: str | Path | None = None,
+        carla_metrics: list[str] | None = None
     ) -> None:
         logger.info(f"Create simple scenario '{scenario_id}'")
 
@@ -89,6 +91,8 @@ class Scenario(Renderable):
             "vehicles": [v.config for v in vehicles],
             "duration": duration,
             "dt": dt,
+            "reference_to_map": reference_to_map,
+            "carla_metrics": carla_metrics
         }
 
         self._scenario_id = scenario_id
@@ -97,6 +101,8 @@ class Scenario(Renderable):
         self._vehicles = vehicles
         self._duration = duration
         self._dt = dt
+        self._reference_to_map = reference_to_map
+        self._carla_metrics = carla_metrics
 
         # CR interface
         self._cr_interface = None
@@ -257,6 +263,14 @@ class Scenario(Renderable):
         vehicles = [Vehicle(**vehicle_config) for vehicle_config in config["vehicles"]]
 
         compiled_config["vehicles"] = vehicles
+
+        # -- openDRIVE reference --
+        if config.get("reference_to_map"):
+            compiled_config["reference_to_map"] = config["reference_to_map"]
+
+        # -- CARLA metrics --
+        if config.get("carla_metrics"):
+            compiled_config["carla_metrics"] = config["carla_metrics"]
 
         # -- Scenario --
         scenario = cls(**compiled_config)
@@ -726,9 +740,11 @@ class Scenario(Renderable):
         *args,
         **kwargs,
     ) -> None:
+
         plot_name = f"{self._scenario_id}"
         if plot_name_suffix:
             plot_name += f"_{plot_name_suffix}"
+
         super().render(
             plot_dir_or_ax,
             *args,
@@ -901,48 +917,61 @@ class Scenario(Renderable):
 
         return gif_filepath
 
-    def save(self, result_dir: Path, mode: str = "config") -> None:
+    def save(self, result_dir: Path | str | list, mode: str = "config") -> None:
         """
         modes: see self.COMPILE_MODES
         """
 
-        result_dir = Path(result_dir)
-
         if mode not in self.COMPILE_MODES:
             msg = "Compile mode not available"
             raise ValueError(msg)
+
+        if isinstance(result_dir, list) and not (mode == "openx" and 0 < len(result_dir) <= 2):
+            msg = "Too less or many result directories provided."
+            raise ValueError(msg)
+
+        result_dir = result_dir if isinstance(result_dir, list) else [result_dir]
+        result_dir = [Path(d) if d is not None else d for d in result_dir]
 
         if mode == "config":
             if self._initialized_from_data:
                 msg = "Cannot save to config if the scenario has been initialized from data."
                 raise ValueError(msg)
 
-            config_file = result_dir / f"{self._scenario_id}.json"
+            config_file = result_dir[0] / f"{self._scenario_id}.json"
 
             with config_file.open("w") as f:
                 json.dump(self._config, f, indent=2)
 
         elif mode == "cr":
-            self.get_cr_interface().to_xml(result_dir)
+            self.get_cr_interface().to_xml(result_dir[0])
 
         elif mode == "openx":
             if self._initialized_from_data:
                 msg = "Cannot save to openx if the scenario has been initialized from data."
                 raise ValueError(msg)
 
+            scr_dir = result_dir[0]
+            odr_dir = result_dir[0] if len(result_dir) == 1 else result_dir[1]
+
             # OpenDRIVE
-            odr_path = self._road.save_opendrive_map(result_dir, self._scenario_id)
+            if odr_dir is not None:
+                odr_path = self._road.save_opendrive_map(odr_dir, self._scenario_id)
 
             # OpenSCENARIO
-            osc = self._create_openscenario(odr_path)
-            osc.write_xml(str(result_dir / f"{self._scenario_id}.xosc"))
+            if self._reference_to_map:
+                odr_path = Path(self._reference_to_map)
+
+            if scr_dir is not None:
+                osc = self._create_openscenario(odr_path)
+                osc.write_xml(str(scr_dir / f"{self._scenario_id}.xosc"))
 
         elif mode == "lanelet2":
             if self._initialized_from_data:
-                msg = "Cannot save to openx if the scenario has been initialized from data."
+                msg = "Cannot save to lanelet2 if the scenario has been initialized from data."
                 raise ValueError(msg)
 
-            self._road.save_lanelet2_map(result_dir, self._scenario_id)
+            self._road.save_lanelet2_map(result_dir[0], self._scenario_id)
 
     def _create_openscenario(self, odr_path: str | Path) -> xosc.Scenario:
         """
@@ -969,7 +998,7 @@ class Scenario(Renderable):
         catalog.add_catalog("VehicleCatalog", vehicle_catalog_path)
 
         # Create road network from opendrive file
-        road_network = xosc.RoadNetwork(roadfile=odr_path.name)
+        road_network = xosc.RoadNetwork(roadfile=str(odr_path))
 
         # Create entities
         entities = xosc.Entities()
@@ -1001,16 +1030,17 @@ class Scenario(Renderable):
         ego_vehicle_object.add_property("type", ego_vehicle_id)
 
         # Create ego controller
+        controller_value = self._ego_configuration.controller or "ros_vehicle_control_route_action.py"
         controller_props = xosc.Properties()
         controller_props.add_property(
-            name="module", value="ros_vehicle_control_route_service.py"
+            name="module", value=controller_value
         )
 
         target_x, target_y = self._road.from_llt_local_to_opendrive_local(
             self._ego_configuration.target_x, self._ego_configuration.target_y
         )
         initial_speed = self._ego_configuration.v0
-        
+
         controller_props.add_property(name="target_x", value=str(target_x))
         controller_props.add_property(name="target_y", value=str(target_y))
         controller_props.add_property(name="initial_speed", value=str(initial_speed))
@@ -1104,13 +1134,40 @@ class Scenario(Renderable):
             init.add_init_action(f"other_{vehicle.id}", vehicle_initial_position_action)
 
         ## Init the storyboard
-        stoptrigger_storyboard = xosc.ValueTrigger(
+        stoptrigger_storyboard = xosc.ConditionGroup("stop")
+
+        stoptrigger_time = xosc.ValueTrigger(
             "StoptriggerTime",
             0,
             xosc.ConditionEdge.rising,
             xosc.SimulationTimeCondition(self._duration, xosc.Rule.greaterThan),
             triggeringpoint="stop",
         )
+        stoptrigger_storyboard.add_condition(stoptrigger_time)
+
+        if self._carla_metrics:
+            for test in self._carla_metrics:
+
+                if test.get("name"):
+                    name = test["name"]
+                else:
+                    continue
+
+                delay = float(test["delay"]) if test.get("delay") else 0.0
+                condition_edge = getattr(xosc.ConditionEdge, test["conditionEdge"]) if test.get("conditionEdge") else xosc.ConditionEdge.rising
+                reference_parameter = test["referenceParameter"] if test.get("referenceParameter") else ""
+                value = int(test["value"]) if test.get("value") else 0
+                rule = getattr(xosc.Rule, test["rule"]) if test.get("rule") else xosc.Rule.lessThan
+
+                stoptrigger = xosc.ValueTrigger(
+                    name,
+                    delay,
+                    condition_edge,
+                    xosc.ParameterCondition(reference_parameter, value, rule),
+                    "stop",
+                )
+                stoptrigger_storyboard.add_condition(stoptrigger)
+
         storyboard = xosc.StoryBoard(init, stoptrigger_storyboard)
 
         ## Init the story

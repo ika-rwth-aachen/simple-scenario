@@ -1,32 +1,32 @@
 {
-    "scenario_id": "atc_scenario",
-    "road": {
-        "from": {
-            "lanelet2_map_file": "ATC_demo_2024-05-24.osm",
-            "opendrive_map_file": "aldenhoven.xodr"
-        }
-    },
-    "ego_configuration": {
-        "lanelet_id": 10001242,
-        "s0": 5,
-        "t0": 0,
-        "v0": 10,
-        "vehicle_type_name": "medium",
-        "target_lanelet_id": 10001182,
-        "target_s": 10,
-        "target_t": 0
-    },
-    "vehicles": [
-        {
-            "vehicle_id": 0,
-            "lanelet_id": 10001241,
-            "s0": 5,
-            "t0": 0,
-            "v0": 10,
-            "vehicle_type_name": "medium",
-            "target_lanelet_id": 10001182
-        }
-    ],
-    "duration": 20.0,
-    "dt": 0.1
+  "scenario_id": "atc_scenario",
+  "road": {
+    "from": {
+      "lanelet2_map_file": "ATC_demo_2024-05-24.osm",
+      "opendrive_map_file": "aldenhoven.xodr"
+    }
+  },
+  "ego_configuration": {
+    "start_lanelet_id": 10001242,
+    "start_s": 5,
+    "start_t": 0,
+    "target_lanelet_id": 10001182,
+    "target_s": 10,
+    "target_t": 0,
+    "v0": 10,
+    "vehicle_type_name": "medium"
+  },
+  "vehicles": [
+    {
+      "vehicle_id": 0,
+      "start_lanelet_id": 10001241,
+      "start_s": 5,
+      "start_t": 0,
+      "target_lanelet_id": 10001182,
+      "v0": 10,
+      "vehicle_type_name": "medium"
+    }
+  ],
+  "duration": 20.0,
+  "dt": 0.1
 }

@@ -237,10 +237,10 @@ class HighdExtractor:
         ego_start_v = ego_v[ego_start_idx]
 
         ego_configuration = EgoConfiguration(
-            ego_start_llt_id,
-            ego_start_llt_s,
-            ego_start_llt_t,
-            ego_start_v,
+            start_lanelet_id=ego_start_llt_id,
+            start_s=ego_start_llt_s,
+            start_t=ego_start_llt_t,
+            v0=ego_start_v,
             target_s=lower_road_goal_position_s,
             target_t=0,
         )

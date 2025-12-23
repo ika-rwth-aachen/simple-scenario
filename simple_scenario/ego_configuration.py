@@ -8,6 +8,10 @@ from typing import TYPE_CHECKING
 from .rendering import Renderable
 from .vehicle import Vehicle
 
+import lanelet2
+import lanelet2.geometry
+from lanelet2.core import GPSPoint
+
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt
     from .road.road import Road
@@ -16,45 +20,71 @@ if TYPE_CHECKING:
 class EgoConfiguration(Renderable):
     def __init__(
         self,
-        lanelet_id: int,
-        s0: float,
-        t0: float,
-        v0: float,
-        target_s: float,
-        target_t: float,
+        start_lanelet_id: int | None = None,
+        start_s: float | None = None,
+        start_t: float | None = None,
+        start_x: float | None = None,
+        start_y: float | None = None,
+        start_lat: float | None = None,
+        start_lon: float | None = None,
         target_lanelet_id: int | None = None,
+        target_s: float | None = None,
+        target_t: float | None = None,
+        target_x: float | None = None,
+        target_y: float | None = None,
+        target_lat: float | None = None,
+        target_lon: float | None = None,
+        v0: float | None = None,
         vehicle_type_name: str = "medium",
         length: float | None = None,
         width: float | None = None,
         v_lon_max: float | None = None,
         a_lon_min: float | None = None,
         a_lon_max: float | None = None,
-        controller: str | None = None
+        controller: str | None = None,
     ) -> None:
         """
-        lanelet_id: ID of initial lanelet the ego vehicle is starting on
-        s0: Initial longitudinal position relative to the given lanelet in m
-        t0: Initial lateral offset to the center line of the given lanelet in m
-        v0: Initial speed in m/s
+        start_lanelet_id: ID of initial lanelet the ego vehicle is starting on
+        start_s: Initial longitudinal position relative to the given lanelet in m
+        start_t: Initial lateral offset to the center line of the given lanelet in m
+        start_x: Start x coordinate, used instead of start_lanelet_id/start_s/start_t if provided
+        start_y: Start y coordinate, used instead of start_lanelet_id/start_s/start_t if provided
+        start_lat: Start latitude coordinate, used instead of start_lanelet_id/start_s/start_t if provided
+        start_lon: Start longitude coordinate, used instead of start_lanelet_id/start_s/start_t if provided
+        target_lanelet_id: ID of the target lanelet, if None, start_lanelet_id is used
         target_s: Target longitudinal position in lanelet with target_lanelet_id
-        target_lanelet_id: ID of the target lanelet, if None, lanelet_id is used
-        vehicle_type: Type string of the vehicle, if "custom", length, width, v_lon_max, a_lon_min, a_lon_max must be given
+        target_t: Target lateral offset to the center line of the given lanelet in m
+        target_x: Target x coordinate, used instead of target_s/target_t/target_lanelet_id if provided
+        target_y: Target y coordinate, used instead of target_s/target_t/target_lanelet_id if provided
+        target_lat: Target latitude coordinate, used instead of target_s/target_t/target_lanelet_id if provided
+        target_lon: Target longitude coordinate, used instead of target_s/target_t/target_lanelet_id if provided
+        v0: Initial speed in m/s
+        vehicle_type_name: Type string of the vehicle, must be in Vehicle
         length: Length of the vehicle in m, if None, it is taken from the vehicle type
         width: Width of the vehicle in m, if None, it is taken from the vehicle type
         v_lon_max: Maximum longitudinal speed of the vehicle in m/s, if None, it is taken from the vehicle type
         a_lon_min: Minimum longitudinal acceleration of the vehicle in m/s^2, if None, it is taken from the vehicle type
         a_lon_max: Maximum longitudinal acceleration of the vehicle in m/s^2, if None, it is taken from the vehicle type
+        controller: Controller for the ego vehicle
         """
 
         self._config = {
-            "lanelet_id": lanelet_id,
-            "s0": s0,
-            "t0": t0,
-            "v0": v0,
-            "vehicle_type_name": vehicle_type_name,
+            "start_lanelet_id": start_lanelet_id,
+            "start_s": start_s,
+            "start_t": start_t,
+            "start_x": start_x,
+            "start_y": start_y,
+            "start_lat": start_lat,
+            "start_lon": start_lon,
+            "target_lanelet_id": target_lanelet_id,
             "target_s": target_s,
             "target_t": target_t,
-            "target_lanelet_id": target_lanelet_id,
+            "target_x": target_x,
+            "target_y": target_y,
+            "target_lat": target_lat,
+            "target_lon": target_lon,
+            "v0": v0,
+            "vehicle_type_name": vehicle_type_name,
             "length": length,
             "width": width,
             "v_lon_max": v_lon_max,
@@ -63,16 +93,22 @@ class EgoConfiguration(Renderable):
             "controller": controller,
         }
 
-        self._lanelet_id = lanelet_id
-        self._s0 = s0
-        self._t0 = t0
-        self._v0 = v0
-        self._vehicle_type_name = vehicle_type_name
+        self._start_lanelet_id = start_lanelet_id
+        self._start_s = start_s
+        self._start_t = start_t
+        self._start_x = start_x
+        self._start_y = start_y
+        self._start_lat = start_lat
+        self._start_lon = start_lon
+        self._target_lanelet_id = target_lanelet_id if target_lanelet_id is not None else start_lanelet_id
         self._target_s = target_s
         self._target_t = target_t
-        self._target_lanelet_id = (
-            target_lanelet_id if target_lanelet_id is not None else lanelet_id
-        )
+        self._target_x = target_x
+        self._target_y = target_y
+        self._target_lat = target_lat
+        self._target_lon = target_lon
+        self._v0 = v0
+        self._vehicle_type_name = vehicle_type_name
         self._controller = controller
 
         if vehicle_type_name not in Vehicle.VEHICLE_TYPE_PARAMETERS:
@@ -111,84 +147,104 @@ class EgoConfiguration(Renderable):
             self._a_lon_min = -vehicle_parameters.longitudinal.a_max
             self._a_lon_max = vehicle_parameters.longitudinal.a_max
 
+        self._traffic_rules = lanelet2.traffic_rules.create(
+            lanelet2.traffic_rules.Locations.Germany,
+            lanelet2.traffic_rules.Participants.Vehicle,
+        )
         # Compiled values
         self._compiled = False
-        self._x0 = None
-        self._y0 = None
-        self._heading0 = None
-        self._target_x = None
-        self._target_y = None
+        self._start_heading = None
+        self._route_length = None
 
     @property
     def config(self) -> dict:
+        """
+        Return the configuration as a dict.
+        """
         return self._config
 
     @property
-    def lanelet_id(self) -> int:
-        return self._lanelet_id
+    def start_lanelet_id(self) -> int:
+        """
+        Lanelet ID of the start position.
+        """
+        self._check_is_compiled()
+        return self._start_lanelet_id
 
     @property
-    def s0(self) -> float:
-        return self._s0
+    def start_s(self) -> float:
+        """
+        Start longitudinal position in lanelet coordinates.
+        """
+        self._check_is_compiled()
+        return self._start_s
 
     @property
-    def t0(self) -> float:
-        return self._t0
+    def start_t(self) -> float:
+        """
+        Start lateral offset in lanelet coordinates.
+        """
+        self._check_is_compiled()
+        return self._start_t
 
     @property
-    def v0(self) -> float:
-        return self._v0
+    def start_x(self) -> float:
+        """
+        x coordinate of the start position.
+        """
+        self._check_is_compiled()
+        return self._start_x
+
+    @property
+    def start_y(self) -> float:
+        """
+        y coordinate of the start position.
+        """
+        self._check_is_compiled()
+        return self._start_y
+
+    @property
+    def start_lat(self) -> float:
+        """
+        lat coordinate of the start position.
+        """
+        self._check_is_compiled()
+        return self._start_lat
+
+    @property
+    def start_lon(self) -> float:
+        """
+        lon coordinate of the start position.
+        """
+        self._check_is_compiled()
+        return self._start_lon
 
     @property
     def target_lanelet_id(self) -> int:
+        """
+        Lanelet ID of the target position.
+        """
+        if self._target_lanelet_id is None:
+            self._check_is_compiled()
         return self._target_lanelet_id
 
     @property
     def target_s(self) -> float:
+        """
+        Target longitudinal position in lanelet coordinates.
+        """
+        if self._target_s is None:
+            self._check_is_compiled()
         return self._target_s
 
     @property
     def target_t(self) -> float:
+        """
+        Target lateral offset in lanelet coordinates.
+        """
+        if self._target_t is None:
+            self._check_is_compiled()
         return self._target_t
-
-    @property
-    def length(self) -> float:
-        return self._length
-
-    @property
-    def width(self) -> float:
-        return self._width
-
-    @property
-    def v_lon_min(self) -> float:
-        return 0
-
-    @property
-    def v_lon_max(self) -> float:
-        return self._v_lon_max
-
-    @property
-    def a_lon_min(self) -> float:
-        return self._a_lon_min
-
-    @property
-    def a_lon_max(self) -> float:
-        return self._a_lon_max
-
-    @property
-    def x0(self) -> float:
-        self._check_is_compiled()
-        return self._x0
-
-    @property
-    def y0(self) -> float:
-        self._check_is_compiled()
-        return self._y0
-
-    @property
-    def heading0(self) -> float:
-        self._check_is_compiled()
-        return self._heading0
 
     @property
     def target_x(self) -> float:
@@ -207,6 +263,79 @@ class EgoConfiguration(Renderable):
         return self._target_y
 
     @property
+    def target_lat(self) -> float:
+        """
+        lat coordinate of the target position.
+        """
+        self._check_is_compiled()
+        return self._target_lat
+
+    @property
+    def target_lon(self) -> float:
+        """
+        lon coordinate of the target position.
+        """
+        self._check_is_compiled()
+        return self._target_lon
+
+    @property
+    def v0(self) -> float:
+        """
+        Initial speed in m/s.
+        """
+        return self._v0
+
+    @property
+    def length(self) -> float:
+        """
+        Vehicle length in meters.
+        """
+        return self._length
+
+    @property
+    def width(self) -> float:
+        """
+        Vehicle width in meters.
+        """
+        return self._width
+
+    @property
+    def v_lon_min(self) -> float:
+        """
+        Minimum longitudinal speed in m/s.
+        """
+        return 0
+
+    @property
+    def v_lon_max(self) -> float:
+        """
+        Maximum longitudinal speed in m/s.
+        """
+        return self._v_lon_max
+
+    @property
+    def a_lon_min(self) -> float:
+        """
+        Minimum longitudinal acceleration in m/s^2.
+        """
+        return self._a_lon_min
+
+    @property
+    def a_lon_max(self) -> float:
+        """
+        Maximum longitudinal acceleration in m/s^2.
+        """
+        return self._a_lon_max
+
+    @property
+    def start_heading(self) -> float:
+        """
+        Start heading in radians.
+        """
+        self._check_is_compiled()
+        return self._start_heading
+
+    @property
     def controller(self) -> str:
         """
         controller for ego vehicle.
@@ -214,19 +343,30 @@ class EgoConfiguration(Renderable):
         self._check_is_compiled()
         return self._controller
 
+    @property
+    def route_length(self) -> float:
+        """
+        Length of the shortest route from start to target in meters.
+        """
+        self._check_is_compiled()
+        return self._route_length
+
     def get_boundary_rect(self) -> tuple[float, float, float, float]:
         """
         Find the boundary rect.
         Returns (xmin, ymin, xmax, ymax).
         """
-        xmin = min(self.x0, self.target_x)
-        xmax = max(self.x0, self.target_x)
-        ymin = min(self.y0, self.target_y)
-        ymax = max(self.y0, self.target_y)
+        xmin = min(self.start_x, self.target_x)
+        xmax = max(self.start_x, self.target_x)
+        ymin = min(self.start_y, self.target_y)
+        ymax = max(self.start_y, self.target_y)
         return (xmin, ymin, xmax, ymax)
 
     @property
     def compiled(self) -> bool:
+        """
+        True if compiled values are available.
+        """
         return self._compiled
 
     def _check_is_compiled(self) -> None:
@@ -234,30 +374,138 @@ class EgoConfiguration(Renderable):
             msg = "Please call .compile() before accessing this data."
             raise Exception(msg)
 
-    def compile(self, road: Road) -> None:
-        # Initial situation
-        lanelet = road.lanelet_map.laneletLayer[self._lanelet_id]
+    def _project_latlon_to_llt_xy(
+        self, road: Road, lat: float, lon: float
+    ) -> tuple[float, float]:
+        projector = getattr(road, "llt_utm_projector", None)
+        if projector is None:
+            msg = "Lat/lon requires a lanelet2 projector."
+            raise ValueError(msg)
+        gps = GPSPoint(lat, lon, 0.0)
+        utm = projector.forward(gps)
+        return utm.x, utm.y
 
-        x0, y0 = road.from_frenet_to_cart(lanelet.centerline, self._s0, self._t0)
+    def _resolve_start_position(self, road: Road) -> lanelet2.core.Lanelet:
+        if self._start_lat is not None and self._start_lon is not None:
+            self._start_x, self._start_y = self._project_latlon_to_llt_xy(
+                road, self._start_lat, self._start_lon
+            )
+
+        if self._start_x is not None and self._start_y is not None:
+            self._start_lanelet_id = road.find_lanelet_id_by_position(
+                self._start_x, self._start_y
+            )
+            if self._start_lanelet_id is None:
+                msg = "Start position is not located in any lanelet."
+                raise ValueError(msg)
+            lanelet = road.lanelet_map.laneletLayer[self._start_lanelet_id]
+            self._start_s, self._start_t = road.from_cart_to_frenet(
+                lanelet.centerline, self._start_x, self._start_y
+            )
+
+        if (
+            self._start_lanelet_id is not None
+            and self._start_s is not None
+            and self._start_t is not None
+            and (self._start_x is None or self._start_y is None)
+        ):
+            lanelet = road.lanelet_map.laneletLayer[self._start_lanelet_id]
+            self._start_x, self._start_y = road.from_frenet_to_cart(
+                lanelet.centerline, self._start_s, self._start_t
+            )
+
+        if self._start_lanelet_id is None:
+            msg = "Start lanelet ID could not be determined."
+            raise ValueError(msg)
+        if self._start_s is None:
+            msg = "Start longitudinal position could not be determined."
+            raise ValueError(msg)
+        if self._start_t is None:
+            msg = "Start lateral offset could not be determined."
+            raise ValueError(msg)
+
+        return road.lanelet_map.laneletLayer[self._start_lanelet_id]
+
+    def _resolve_target_position(self, road: Road) -> lanelet2.core.Lanelet:
+        if self._target_lat is not None and self._target_lon is not None:
+            self._target_x, self._target_y = self._project_latlon_to_llt_xy(
+                road, self._target_lat, self._target_lon
+            )
+
+        if self._target_x is not None and self._target_y is not None:
+            self._target_lanelet_id = road.find_lanelet_id_by_position(
+                self._target_x, self._target_y
+            )
+            if self._target_lanelet_id is None:
+                msg = "Target position is not located in any lanelet."
+                raise ValueError(msg)
+            target_lanelet = road.lanelet_map.laneletLayer[self._target_lanelet_id]
+            self._target_s, self._target_t = road.from_cart_to_frenet(
+                target_lanelet.centerline, self._target_x, self._target_y
+            )
+
+        if (
+            self._target_lanelet_id is not None
+            and self._target_s is not None
+            and self._target_t is not None
+            and (self._target_x is None or self._target_y is None)
+        ):
+            target_lanelet = road.lanelet_map.laneletLayer[self._target_lanelet_id]
+            self._target_x, self._target_y = road.from_frenet_to_cart(
+                target_lanelet.centerline, self._target_s, self._target_t
+            )
+
+        if self._target_lanelet_id is None:
+            msg = "Target lanelet ID could not be determined."
+            raise ValueError(msg)
+        if self._target_s is None:
+            msg = "Target longitudinal position could not be determined."
+            raise ValueError(msg)
+        if self._target_t is None:
+            msg = "Target lateral offset could not be determined."
+            raise ValueError(msg)
+
+        return road.lanelet_map.laneletLayer[self._target_lanelet_id]
+
+    def compile(self, road: Road) -> None:
+        lanelet = self._resolve_start_position(road)
 
         # Assumption: heading is along the lanelet
         # Moved along lanelet for 1s
-        x1, y1 = road.from_frenet_to_cart(lanelet.centerline, self._s0 + 0.5, self._t0)
-        heading0 = np.arctan2(y1 - y0, x1 - x0)
-
-        # Target situation
-        target_lanelet = road.lanelet_map.laneletLayer[self._target_lanelet_id]
-        target_x, target_y = road.from_frenet_to_cart(
-            target_lanelet.centerline, self._target_s, self._target_t
+        x1, y1 = road.from_frenet_to_cart(
+            lanelet.centerline, self._start_s + 0.5, self._start_t
         )
+        start_heading = np.arctan2(y1 - self._start_y, x1 - self._start_x)
+
+        target_lanelet = self._resolve_target_position(road)
+
+        # Calculate route length
+        routing_graph = lanelet2.routing.RoutingGraph(
+            road.lanelet_map, self._traffic_rules
+        )
+        route = routing_graph.getRoute(lanelet, target_lanelet)
+        if route is None:
+            msg = (
+                "No valid route found. Please check the route "
+                f"(start_lanelet_id: {self._start_lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+            )
+            raise ValueError(msg)
+
+        target_lanelet_length = lanelet2.geometry.length2d(target_lanelet)
+        route_length = route.length2d()
+        route_length -= self._start_s
+        route_length -= target_lanelet_length - min(self._target_s, target_lanelet_length)
+
+        if route_length < -1e-6:
+            msg = (
+                "Computed route length is negative. Please check that the target is "
+                "ahead of the start position along the route."
+            )
+            raise ValueError(msg)
 
         # Compiled values
-        self._x0 = x0
-        self._y0 = y0
-        self._heading0 = heading0
-        self._target_x = target_x
-        self._target_y = target_y
-
+        self._start_heading = start_heading
+        self._route_length = max(0.0, route_length)
         self._compiled = True
 
     def _plot_in_ax(self, ax: plt.Axes, *args, **kwargs) -> None:  # noqa: ARG002
@@ -293,17 +541,17 @@ class EgoConfiguration(Renderable):
             return pts
 
         pts = get_rotated_bbox_pts(
-            self._x0, self._y0, self._heading0, self.length, self.width
+            self.start_x, self.start_y, self._start_heading, self.length, self.width
         )
 
         pts_closed = np.vstack((pts, pts[0]))
         ax.plot(pts_closed[:, 0], pts_closed[:, 1], "b-", zorder=20, label="Ego start")
 
         rect_patch = Rectangle(
-            (self._x0 - self.length / 2, self._y0 - self.width / 2),
+            (self.start_x - self.length / 2, self.start_y - self.width / 2),
             self.length,
             self.width,
-            angle=np.rad2deg(self._heading0),
+            angle=np.rad2deg(self._start_heading),
             rotation_point="center",
             alpha=0.25,
             zorder=20,

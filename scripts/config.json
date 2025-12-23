@@ -1,5 +1,5 @@
 {
-    "scenario_id": "atc_t-junction_left_turn_obstacle_left",
+    "scenario_id": "atc_multilane_roundabout_right",
     "road": {
         "from": {
             "opendrive_map_file": "./aldenhoven.xodr",
@@ -7,24 +7,41 @@
         }
     },
     "ego_configuration": {
-        "lanelet_id": 7784,
-        "target_lanelet_id": 6871,
-        "s0": 7.5,
-        "t0": 0,
-        "v0": 0,
+        "start_lat": 50.90768453892142,
+        "start_lon": 6.226575820159271,
+        "target_lat": 50.9073867698906,
+        "target_lon": 6.225902023079251,
+        "v0": 0.0,
         "vehicle_type_name": "medium",
-        "target_s": 100,
-        "target_t": 0,
         "controller": "ros_vehicle_control_route_action.py"
     },
     "vehicles": [
         {
             "vehicle_id": 0,
-            "lanelet_id": 6853,
-            "target_lanelet_id": 7725,
-            "s0": 0.0,
-            "t0": 0.0,
-            "v0": 4.0,
+            "start_lanelet_id": 7751,
+            "start_s": 0.0,
+            "start_t": 0.0,
+            "target_lat": 50.90717909947147,
+            "target_lon": 6.225848784392664,
+            "v0": 5.0,
+            "a0": 0.0,
+            "a_delay": 0.0,
+            "a_profile": "constant",
+            "lc_direction": 0,
+            "lc_delay": 0.0,
+            "lc_duration": 0.0,
+            "vehicle_type_name": "medium",
+            "depends_on_ego": true,
+            "duration": 15.0
+        },
+        {
+            "vehicle_id": 1,
+            "start_lanelet_id": 7924,
+            "start_s": 0.0,
+            "start_t": 0.0,
+            "target_lat": 50.9073903449276, 
+            "target_lon": 6.225886238768645,
+            "v0": 5.0,
             "a0": 0.0,
             "a_delay": 0,
             "a_profile": "constant",
@@ -32,20 +49,16 @@
             "lc_delay": 0.0,
             "lc_duration": 0.0,
             "vehicle_type_name": "medium",
-            "depends_on_ego": true
+            "depends_on_ego": true,
+            "duration": 25.0
         }
     ],
-    "duration": 30.0,
+    "duration": 60.0,
     "dt": 0.1,
     "reference_to_map": "/Game/aldenhoven/Maps/aldenhoven/aldenhoven",
     "carla_metrics": [
         {
-            "name": "criteria_RunningStopTest",
-            "delay": "",
-            "conditionEdge": "",
-            "parameterRef": "",
-            "value": "",
-            "rule": ""
+            "name": "criteria_RunningStopTest"
         },
         {
             "name": "criteria_RunningRedLightTest"
@@ -61,11 +74,8 @@
         },
         {
             "name": "criteria_DrivenDistanceTest",
-            "delay": "",
-            "conditionEdge": "",
             "parameterRef": "distance_success",
-            "value": "65",
-            "rule": "lessThan"
+            "rule": "greaterThan"
         }
     ]
 }

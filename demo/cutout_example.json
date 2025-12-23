@@ -1,57 +1,57 @@
 {
-    "scenario_id": "cutout_example",
-    "road": {
-      "n_lanes": 3,
-      "lane_width": 3.75,
-      "segments": [
-        {
-          "length": 700,
-          "heading": 0.0
-        }
-      ],
-      "speed_limit": 120,
-      "x0": 0,
-      "y0": 0
-    },
-    "ego_configuration": {
-      "lanelet_id": 1000,
-      "s0": 50,
-      "t0": 0,
-      "v0": 27.78,
-      "vehicle_type_name": "medium",
-      "target_s": 630,
-      "target_t": 0
-    },
-    "vehicles": [
+  "scenario_id": "cutout_example",
+  "road": {
+    "n_lanes": 3,
+    "lane_width": 3.75,
+    "segments": [
       {
-        "vehicle_id": 0,
-        "lanelet_id": 1000,
-        "s0": 80,
-        "t0": 0,
-        "v0": 27.78,
-        "a0": -1.0,
-        "a_delay": 2.0,
-        "a_profile": "constant",
-        "lc_direction": 1,
-        "lc_delay": 3.0,
-        "lc_duration": 2.0,
-        "vehicle_type_name": "medium"
-      },
-      {
-        "vehicle_id": 1,
-        "lanelet_id": 1000,
-        "s0": 140,
-        "t0": 0,
-        "v0": 27.78,
-        "a0": -5.0,
-        "a_delay": 0.0,
-        "a_profile": "constant",
-        "lc_direction": 0,
-        "lc_delay": 0,
-        "lc_duration": 3,
-        "vehicle_type_name": "medium"
+        "length": 700,
+        "heading": 0.0
       }
     ],
-    "duration": 20,
-    "dt": 0.1
+    "speed_limit": 120,
+    "x0": 0,
+    "y0": 0
+  },
+  "ego_configuration": {
+    "start_lanelet_id": 1000,
+    "start_s": 50,
+    "start_t": 0,
+    "target_s": 630,
+    "target_t": 0,
+    "v0": 27.78,
+    "vehicle_type_name": "medium"
+  },
+  "vehicles": [
+    {
+      "vehicle_id": 0,
+      "start_lanelet_id": 1000,
+      "start_s": 80,
+      "start_t": 0,
+      "v0": 27.78,
+      "a0": -1.0,
+      "a_delay": 2.0,
+      "a_profile": "constant",
+      "lc_direction": 1,
+      "lc_delay": 3.0,
+      "lc_duration": 2.0,
+      "vehicle_type_name": "medium"
+    },
+    {
+      "vehicle_id": 1,
+      "start_lanelet_id": 1000,
+      "start_s": 140,
+      "start_t": 0,
+      "v0": 27.78,
+      "a0": -5.0,
+      "a_delay": 0.0,
+      "a_profile": "constant",
+      "lc_direction": 0,
+      "lc_delay": 0,
+      "lc_duration": 3,
+      "vehicle_type_name": "medium"
+    }
+  ],
+  "duration": 20,
+  "dt": 0.1
 }

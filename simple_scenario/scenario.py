@@ -261,7 +261,6 @@ class Scenario(Renderable):
 
         # -- Vehicles --
         vehicles = [Vehicle(**vehicle_config) for vehicle_config in config["vehicles"]]
-
         compiled_config["vehicles"] = vehicles
 
         # -- openDRIVE reference --
@@ -381,9 +380,10 @@ class Scenario(Renderable):
         )
 
         ego_configuration = EgoConfiguration(
-            ego_initial_lanelet_id,
-            *ego_initial_pos_frenet,
-            planning_problem.initial_state.velocity,
+            start_lanelet_id=ego_initial_lanelet_id,
+            start_s=ego_initial_pos_frenet[0],
+            start_t=ego_initial_pos_frenet[1],
+            v0=planning_problem.initial_state.velocity,
             target_s=goal_region_center_s,
             target_t=goal_region_center_t,
         )
@@ -479,9 +479,15 @@ class Scenario(Renderable):
             self._ego_configuration.compile(self._road)
 
         # Compile vehicles
+        projector = getattr(self._road, "_llt_utm_projector", None)
         for vehicle in self._vehicles:
             if not vehicle.compiled:
-                vehicle.compile(self._road.lanelet_map, self._duration, self._dt)
+                vehicle.compile(
+                    self._road.lanelet_map,
+                    self._duration,
+                    self._dt,
+                    projector=projector,
+                )
 
         self._compiled = True
 
@@ -548,6 +554,10 @@ class Scenario(Renderable):
             vehicle_xmin, vehicle_ymin, vehicle_xmax, vehicle_ymax = (
                 vehicle.get_boundary_rect()
             )
+            if np.isnan(
+                [vehicle_xmin, vehicle_ymin, vehicle_xmax, vehicle_ymax]
+            ).any():
+                continue
             xmin = min(xmin, vehicle_xmin)
             ymin = min(ymin, vehicle_ymin)
             xmax = max(xmax, vehicle_xmax)
@@ -614,24 +624,31 @@ class Scenario(Renderable):
             l_wb = vehicle_parameters.a + vehicle_parameters.b
 
             for vehicle in self._vehicles:
-                psi_dot = (
-                    np.diff(vehicle.heading, append=vehicle.heading[-1]) / self._dt
-                )
-                safe_v = np.nan * np.ones_like(vehicle.v)
-                safe_v[~np.isclose(vehicle.v, 0, atol=1e-3)] = vehicle.v[
-                    ~np.isclose(vehicle.v, 0, atol=1e-3)
+                valid_mask = ~np.isnan(vehicle.x) & ~np.isnan(vehicle.y)
+                if not np.any(valid_mask):
+                    continue
+
+                x = vehicle.x[valid_mask]
+                y = vehicle.y[valid_mask]
+                heading = vehicle.heading[valid_mask]
+                v = vehicle.v[valid_mask]
+
+                psi_dot = np.diff(heading, append=heading[-1]) / self._dt
+                safe_v = np.nan * np.ones_like(v)
+                safe_v[~np.isclose(v, 0, atol=1e-3)] = v[
+                    ~np.isclose(v, 0, atol=1e-3)
                 ]
                 steering_angle = np.arctan(np.divide(psi_dot * l_wb, safe_v))
                 steering_angle[np.isnan(steering_angle)] = 0.0
 
                 new_state_list = []
-                for i, _ in enumerate(vehicle.x):
+                for i, _ in enumerate(x):
                     new_state_list.append(
                         State(
-                            position=np.array((vehicle.x[i], vehicle.y[i])),
+                            position=np.array((x[i], y[i])),
                             steering_angle=steering_angle[i],
-                            velocity=vehicle.v[i],
-                            orientation=vehicle.heading[i],
+                            velocity=v[i],
+                            orientation=heading[i],
                             time_step=i,
                         )
                     )
@@ -686,8 +703,7 @@ class Scenario(Renderable):
                     ):
                         state = do.prediction.trajectory.state_at_time_step(timestep)
                     else:
-                        msg = f"scenario '{self._scenario_id}': Dynamic obstacle is not defined for the complete scenario."
-                        raise RuntimeError(msg)
+                        continue
 
                     collision_obj = pycrcc.RectOBB(
                         do.obstacle_shape.length / 2,
@@ -1080,9 +1096,9 @@ class Scenario(Renderable):
         # Ego Teleport
         ego_start_x, ego_start_y, ego_start_heading = (
             self._road.from_llt_local_to_opendrive_local(
-                self._ego_configuration.x0,
-                self._ego_configuration.y0,
-                self._ego_configuration.heading0,
+                self._ego_configuration.start_x,
+                self._ego_configuration.start_y,
+                self._ego_configuration.start_heading,
             )
         )
         ego_start_position_action = xosc.TeleportAction(
@@ -1098,7 +1114,10 @@ class Scenario(Renderable):
                 name="module", value=controller_value
             )
 
-            controller_props.add_property(name="initial_speed", value=str(self._ego_configuration.v0))
+            controller_props.add_property(
+                name="initial_speed",
+                value=str(self._ego_configuration.v0),
+            )
             controller = xosc.Controller("CustomController", controller_props)
 
             ego_override_controller_value_action = xosc.OverrideControllerValueAction()
@@ -1137,16 +1156,15 @@ class Scenario(Renderable):
             stoptrigger_storyboard = xosc.ConditionGroup("stop")
             for test in self._carla_metrics:
 
-                if test.get("name"):
-                    name = test["name"]
-                else:
-                    continue
-
+                name = test["name"]
                 delay = float(test["delay"]) if test.get("delay") else 0.0
                 condition_edge = getattr(xosc.ConditionEdge, test["conditionEdge"]) if test.get("conditionEdge") else xosc.ConditionEdge.rising
                 reference_parameter = test["parameterRef"] if test.get("parameterRef") else ""
                 value = int(test["value"]) if test.get("value") else 0
                 rule = getattr(xosc.Rule, test["rule"]) if test.get("rule") else xosc.Rule.lessThan
+
+                if name == "criteria_DrivenDistanceTest" and value == 0.0:
+                    value = 0.95 * self._ego_configuration.route_length
 
                 stoptrigger = xosc.ValueTrigger(
                     name,
@@ -1199,9 +1217,9 @@ class Scenario(Renderable):
         # Create waypoints from start end end position
         ego_start_x, ego_start_y, ego_start_heading = (
             self._road.from_llt_local_to_opendrive_local(
-                self._ego_configuration.x0,
-                self._ego_configuration.y0,
-                self._ego_configuration.heading0
+                self._ego_configuration.start_x,
+                self._ego_configuration.start_y,
+                self._ego_configuration.start_heading
             )
         )
 
@@ -1241,8 +1259,6 @@ class Scenario(Renderable):
         act.add_maneuver_group(maneuver_group)
 
         # Add FollowTrajectoryActions for all vehicles to the event
-        scenario_step_times = (self.steps * self._dt).tolist()
-
         for vehicle in self._vehicles:
             # Init the maneuvergroup
             maneuver_group = xosc.ManeuverGroup(f"ManeuverGroup_vehicle_{vehicle.id}")
@@ -1262,7 +1278,10 @@ class Scenario(Renderable):
 
             # Create polyline
             vehicle_positions = []
-            for i, _ in enumerate(vehicle.x):
+            valid_indices = np.where(~np.isnan(vehicle.x))[0]
+            if valid_indices.size == 0:
+                continue
+            for i in valid_indices:
                 xodr_local_x, xodr_local_y, xodr_local_heading = (
                     self._road.from_llt_local_to_opendrive_local(
                         vehicle.x[i], vehicle.y[i], vehicle.heading[i]
@@ -1273,7 +1292,8 @@ class Scenario(Renderable):
                 )
                 vehicle_positions.append(vehicle_position)
 
-            vehicle_polyline = xosc.Polyline(scenario_step_times, vehicle_positions)
+            vehicle_step_times = (valid_indices * self._dt).tolist()
+            vehicle_polyline = xosc.Polyline(vehicle_step_times, vehicle_positions)
 
             # Fill trajectory with polyline
             vehicle_trajectory.add_shape(vehicle_polyline)

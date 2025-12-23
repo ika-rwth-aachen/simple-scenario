@@ -107,6 +107,10 @@ class MappedRoad(Road):
     def lanelet_map(self) -> LaneletMap:
         return self._lanelet_map
 
+    @property
+    def llt_utm_projector(self) -> UtmProjector:
+        return self._llt_utm_projector
+
     def from_llt_local_to_opendrive_local(
         self, x_llt2: float, y_llt2: float, heading_llt2: float | None = None
     ) -> tuple[float, float] | tuple[float, float, float]:

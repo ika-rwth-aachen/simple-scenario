@@ -15,7 +15,13 @@ class TestVehicle:
 
         print("Create vehicle")
 
-        vehicle = Vehicle(0, 1000, 10, 0, 27.78)
+        vehicle = Vehicle(
+            0,
+            start_lanelet_id=1000,
+            start_s=10,
+            start_t=0,
+            v0=27.78,
+        )
 
         # Access parameters
         print(f"Length: {vehicle.length}")
@@ -47,7 +53,15 @@ class TestVehicle:
 
         print("Create vehicle")
 
-        vehicle = Vehicle(0, 1000, 10, 0, 27.78, lc_direction=1, lc_delay=2)
+        vehicle = Vehicle(
+            0,
+            start_lanelet_id=1000,
+            start_s=10,
+            start_t=0,
+            v0=27.78,
+            lc_direction=1,
+            lc_delay=2,
+        )
 
         # Access parameters
         print(f"Length: {vehicle.length}")
@@ -81,7 +95,15 @@ class TestVehicle:
 
         print("Create vehicle")
 
-        vehicle = Vehicle(0, 1001, 10, 0, 27.78, lc_direction=-1, lc_delay=2)
+        vehicle = Vehicle(
+            0,
+            start_lanelet_id=1001,
+            start_s=10,
+            start_t=0,
+            v0=27.78,
+            lc_direction=-1,
+            lc_delay=2,
+        )
 
         # Access parameters
         print(f"Length: {vehicle.length}")

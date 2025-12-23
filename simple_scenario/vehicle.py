@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from vehiclemodels.parameters_vehicle1 import parameters_vehicle1
 from vehiclemodels.parameters_vehicle2 import parameters_vehicle2
 from vehiclemodels.parameters_vehicle3 import parameters_vehicle3
+from lanelet2.core import GPSPoint
 
 from .road.road import Road
 from .rendering import Renderable
@@ -35,10 +36,22 @@ class Vehicle(Renderable):
     def __init__(
         self,
         vehicle_id: int,
-        lanelet_id: int,
-        s0: float,
-        t0: float,
-        v0: float,
+        *,
+        start_lanelet_id: int | None = None,
+        start_s: float | None = None,
+        start_t: float | None = None,
+        start_x: float | None = None,
+        start_y: float | None = None,
+        start_lat: float | None = None,
+        start_lon: float | None = None,
+        target_lanelet_id: int | None = None,
+        target_s: float | None = None,
+        target_t: float | None = None,
+        target_x: float | None = None,
+        target_y: float | None = None,
+        target_lat: float | None = None,
+        target_lon: float | None = None,
+        v0: float | None = None,
         a0: float = 0,
         a_delay: float = 0,
         a_profile: str = "constant",
@@ -48,17 +61,29 @@ class Vehicle(Renderable):
         lc_type: str = "polynomial",
         lc_vy: float = 0,
         inverse_driving_direction: bool = False,
-        target_lanelet_id: int | None = None,
         vehicle_type_name: str = "medium",
-        depends_on_ego: bool = False,
         length: float | None = None,
         width: float | None = None,
         from_data: bool = False,
+        depends_on_ego: bool = False,
+        duration: float | None = None,
     ) -> None:
         """
-        lanelet_id: ID of initial lanelet the vehicle is starting on
-        s0: Initial longitudinal position relative to the given lanelet in m
-        t0: Initial lateral offset to the center line of the given lanelet in m
+        vehicle_id: Unique ID of the vehicle
+        start_lanelet_id: ID of initial lanelet the vehicle is starting on
+        start_s: Initial longitudinal position relative to the given lanelet in m
+        start_t: Initial lateral offset to the center line of the given lanelet in m
+        start_x: Start x coordinate, used instead of start_lanelet_id/start_s/start_t if provided
+        start_y: Start y coordinate, used instead of start_lanelet_id/start_s/start_t if provided
+        start_lat: Start latitude coordinate, used instead of start_lanelet_id/start_s/start_t if provided
+        start_lon: Start longitude coordinate, used instead of start_lanelet_id/start_s/start_t if provided
+        target_lanelet_id: ID of the target lanelet, if None, start_lanelet_id is used
+        target_s: Target longitudinal position in lanelet with target_lanelet_id
+        target_t: Target lateral offset to the center line of the given lanelet in m
+        target_x: Target x coordinate, used instead of target_s/target_t/target_lanelet_id if provided
+        target_y: Target y coordinate, used instead of target_s/target_t/target_lanelet_id if provided
+        target_lat: Target latitude coordinate, used instead of target_s/target_t/target_lanelet_id if provided
+        target_lon: Target longitude coordinate, used instead of target_s/target_t/target_lanelet_id if provided
         v0: Initial speed in m/s
         a0: Acceleration in m/s^2
         a_delay: Time to wait before applying acceleration
@@ -69,9 +94,12 @@ class Vehicle(Renderable):
         lc_type: How the lc is done
         lc_vy: Only used if lc_type is "vy"
         inverse_driving_direction: If True, the vehicle is driving in the opposite direction
-        target_lanelet_id: ID of the target lanelet (used to construct a laneletsequence), if None, lanelet_id is used and the vehicle may only drive in the initial lanelet
         vehicle_type_name: Type of the vehicle
+        length: Length of the vehicle, only used if vehicle_type_name is "custom"
+        width: Width of the vehicle, only used if vehicle_type_name is "custom"
+        from_data: If True, the vehicle is created from data and no compilation is needed
         depends_on_ego: If True, the vehicle's behavior depends on the ego vehicle movement
+        duration: Optional duration for this vehicle's trajectory in seconds
         """
 
         if a_profile not in self.ACCELERATION_PROFILES:
@@ -100,9 +128,20 @@ class Vehicle(Renderable):
 
         self._config = {
             "vehicle_id": vehicle_id,
-            "lanelet_id": lanelet_id,
-            "s0": s0,
-            "t0": t0,
+            "start_lanelet_id": start_lanelet_id,
+            "start_s": start_s,
+            "start_t": start_t,
+            "start_x": start_x,
+            "start_y": start_y,
+            "start_lat": start_lat,
+            "start_lon": start_lon,
+            "target_lanelet_id": target_lanelet_id,
+            "target_s": target_s,
+            "target_t": target_t,
+            "target_x": target_x,
+            "target_y": target_y,
+            "target_lat": target_lat,
+            "target_lon": target_lon,
             "v0": v0,
             "a0": a0,
             "a_delay": a_delay,
@@ -112,37 +151,41 @@ class Vehicle(Renderable):
             "lc_duration": lc_duration,
             "lc_type": lc_type,
             "lc_vy": lc_vy,
-            "target_lanelet_id": target_lanelet_id,
             "inverse_driving_direction": inverse_driving_direction,
             "vehicle_type_name": vehicle_type_name,
-            "depends_on_ego": depends_on_ego,
             "length": length,
             "width": width,
             "from_data": from_data,
+            "depends_on_ego": depends_on_ego,
+            "duration": duration,
         }
 
         self._vehicle_id = vehicle_id
-        self._lanelet_id = lanelet_id
-        self._s0 = s0
-        self._t0 = t0
+        self._start_lanelet_id = start_lanelet_id
+        self._start_s = start_s
+        self._start_t = start_t
+        self._start_x = start_x
+        self._start_y = start_y
+        self._start_lat = start_lat
+        self._start_lon = start_lon
+        self._target_lanelet_id = target_lanelet_id if target_lanelet_id is not None else start_lanelet_id
+        self._target_s = target_s
+        self._target_t = target_t
+        self._target_x = target_x
+        self._target_y = target_y
+        self._target_lat = target_lat
+        self._target_lon = target_lon
         self._v0 = v0
-
         self._a0 = a0
         self._a_delay = a_delay
         self._a_profile = a_profile
-
         self._lc_direction = lc_direction
         self._lc_delay = lc_delay
         self._lc_duration = lc_duration
         self._lc_type = lc_type
         self._lc_vy = lc_vy
-
         self._inverse_driving_direction = inverse_driving_direction
-
-        self._target_lanelet_id = target_lanelet_id
-
         self._vehicle_type_name = vehicle_type_name
-        self._depends_on_ego = depends_on_ego
         self._vehicle_parameters = None
         if self._vehicle_type_name == "custom":
             self._length = length
@@ -153,6 +196,8 @@ class Vehicle(Renderable):
             )
             self._length = vehicle_parameters.l
             self._width = vehicle_parameters.w
+        self._depends_on_ego = depends_on_ego
+        self._duration = duration
 
         self._traffic_rules = lanelet2.traffic_rules.create(
             lanelet2.traffic_rules.Locations.Germany,
@@ -187,16 +232,16 @@ class Vehicle(Renderable):
     def from_data(
         cls,
         vehicle_id: int,
-        lanelet_id: int,
         x: np.ndarray,
         y: np.ndarray,
         heading: np.ndarray,
         v: np.ndarray,
         a: np.ndarray,
         vehicle_type_name: str = "medium",
-        depends_on_ego: bool = False,
         length: float | None = None,
         width: float | None = None,
+        depends_on_ego: bool = False,
+        duration: float | None = None,
     ) -> Vehicle:
         if x.shape[0] == 0:
             msg = "All data arrays must have some values."
@@ -211,17 +256,15 @@ class Vehicle(Renderable):
             raise ValueError(msg)
 
         vehicle = Vehicle(
-            vehicle_id,
-            lanelet_id,
-            None,
-            None,
-            heading[0],
-            v[0],
+            vehicle_id=vehicle_id,
+            v0=v[0],
+            a0=a[0],
             vehicle_type_name=vehicle_type_name,
-            depends_on_ego=depends_on_ego,
             length=length,
             width=width,
             from_data=True,
+            depends_on_ego=depends_on_ego,
+            duration=duration
         )
 
         vehicle.set_data(x, y, heading, v, a)
@@ -246,22 +289,102 @@ class Vehicle(Renderable):
         return self._vehicle_parameters
 
     @property
-    def lanelet_id(self) -> int:
-        return self._lanelet_id
+    def start_lanelet_id(self) -> int:
+        if self._initialized_from_data:
+            msg = "Not possible to access start_lanelet_id when initialized from data."
+            raise Exception(msg)
+        return self._start_lanelet_id
 
     @property
-    def s0(self) -> float:
+    def start_s(self) -> float:
         if self._initialized_from_data:
-            msg = "Not possible to access s0 when initialized from data."
+            msg = "Not possible to access start_s when initialized from data."
             raise Exception(msg)
-        return self._s0
+        return self._start_s
 
     @property
-    def t0(self) -> float:
+    def start_t(self) -> float:
         if self._initialized_from_data:
-            msg = "Not possible to access t0 when initialized from data."
+            msg = "Not possible to access start_t when initialized from data."
             raise Exception(msg)
-        return self._t0
+        return self._start_t
+
+    @property
+    def start_x(self) -> float:
+        if self._initialized_from_data:
+            msg = "Not possible to access start_x when initialized from data."
+            raise Exception(msg)
+        return self._start_x
+
+    @property
+    def start_y(self) -> float:
+        if self._initialized_from_data:
+            msg = "Not possible to access start_y when initialized from data."
+            raise Exception(msg)
+        return self._start_y
+
+    @property
+    def start_lat(self) -> float:
+        if self._initialized_from_data:
+            msg = "Not possible to access start_lat when initialized from data."
+            raise Exception(msg)
+        return self._start_lat
+
+    @property
+    def start_lon(self) -> float:
+        if self._initialized_from_data:
+            msg = "Not possible to access start_lon when initialized from data."
+            raise Exception(msg)
+        return self._start_lon
+
+    @property
+    def target_lanelet_id(self) -> int:
+        if self._initialized_from_data:
+            msg = "Not possible to access target_lanelet_id when initialized from data."
+            raise Exception(msg)
+        return self._target_lanelet_id
+
+    @property
+    def target_s(self) -> float:
+        if self._initialized_from_data:
+            msg = "Not possible to access target_s when initialized from data."
+            raise Exception(msg)
+        return self._target_s
+
+    @property
+    def target_t(self) -> float:
+        if self._initialized_from_data:
+            msg = "Not possible to access target_t when initialized from data."
+            raise Exception(msg)
+        return self._target_t
+
+    @property
+    def target_x(self) -> float:
+        if self._initialized_from_data:
+            msg = "Not possible to access target_x when initialized from data."
+            raise Exception(msg)
+        return self._target_x
+
+    @property
+    def target_y(self) -> float:
+        if self._initialized_from_data:
+            msg = "Not possible to access target_y when initialized from data."
+            raise Exception(msg)
+        return self._target_y
+
+    @property
+    def target_lat(self) -> float:
+        if self._initialized_from_data:
+            msg = "Not possible to access target_lat when initialized from data."
+            raise Exception(msg)
+        return self._target_lat
+
+    @property
+    def target_lon(self) -> float:
+        if self._initialized_from_data:
+            msg = "Not possible to access target_lon when initialized from data."
+            raise Exception(msg)
+        return self._target_lon
 
     @property
     def v0(self) -> float:
@@ -272,12 +395,28 @@ class Vehicle(Renderable):
         return self._a0
 
     @property
+    def inverse_driving_direction(self) -> bool:
+        return self._inverse_driving_direction
+
+    @property
+    def vehicle_type_name(self) -> str:
+        return self._vehicle_type_name
+
+    @property
     def length(self) -> float:
         return self._length
 
     @property
     def width(self) -> float:
         return self._width
+
+    @property
+    def depends_on_ego(self) -> bool:
+        return self._depends_on_ego
+
+    @property
+    def duration(self) -> float | None:
+        return self._duration
 
     @property
     def x(self) -> np.ndarray:
@@ -304,26 +443,14 @@ class Vehicle(Renderable):
         self._check_is_compiled()
         return self._a
 
+    @property
+    def initialized_from_data(self) -> bool:
+        return self._initialized_from_data
+
     def _check_is_compiled(self) -> None:
         if not self._compiled:
             msg = "Please call .compile() before accessing this data."
             raise Exception(msg)
-
-    @property
-    def inverse_driving_direction(self) -> bool:
-        return self._inverse_driving_direction
-
-    @property
-    def vehicle_type_name(self) -> str:
-        return self._vehicle_type_name
-
-    @property
-    def depends_on_ego(self) -> bool:
-        return self._depends_on_ego
-
-    @property
-    def initialized_from_data(self) -> bool:
-        return self._initialized_from_data
 
     def set_data(
         self, x: np.array, y: np.array, heading: np.array, v: np.array, a: np.array
@@ -344,13 +471,112 @@ class Vehicle(Renderable):
     def compiled(self) -> bool:
         return self._compiled
 
-    def compile(self, lanelet_map: LaneletMap, duration: float, dt: float) -> None:  # noqa: PLR0912
+    def compile(  # noqa: PLR0912
+        self,
+        lanelet_map: LaneletMap,
+        duration: float,
+        dt: float,
+        projector: object | None = None,
+    ) -> None:
         """
         Create absolute cartesian coordinates etc
         """
 
+        # Start situation
+        if self._start_lat is not None and self._start_lon is not None:
+            if projector is None:
+                msg = "Start lat/lon requires a lanelet2 projector."
+                raise ValueError(msg)
+            gps = GPSPoint(self._start_lat, self._start_lon, 0.0)
+            utm = projector.forward(gps)
+            self._start_x, self._start_y = utm.x, utm.y
+
+        if self._start_x is not None and self._start_y is not None:
+            self._start_lanelet_id = Road.find_lanelet_id_by_position_on_lanelet_map(
+                lanelet_map, self._start_x, self._start_y
+            )
+            if self._start_lanelet_id is None:
+                msg = "Start position is not located in any lanelet."
+                raise ValueError(msg)
+            start_lanelet = lanelet_map.laneletLayer[self._start_lanelet_id]
+            self._start_s, self._start_t = Road.from_cart_to_frenet(
+                start_lanelet.centerline, self._start_x, self._start_y
+            )
+
+        if (
+            self._start_lanelet_id is not None
+            and self._start_s is not None
+            and self._start_t is not None
+            and (self._start_x is None or self._start_y is None)
+        ):
+            lanelet = lanelet_map.laneletLayer[self._start_lanelet_id]
+            self._start_x, self._start_y = Road.from_frenet_to_cart(
+                lanelet.centerline, self._start_s, self._start_t
+            )
+
+        # Check if start position is valid
+        if self._start_lanelet_id is None:
+            msg = "Start lanelet ID of a vehicle could not be determined."
+            raise ValueError(msg)
+        if self._start_s is None:
+            msg = "Start longitudinal position of a vehicle could not be determined."
+            raise ValueError(msg)
+        if self._start_t is None:
+            msg = "Start lateral offset of a vehicle could not be determined."
+            raise ValueError(msg)
+
+        # Target situation
+        if self._target_lat is not None and self._target_lon is not None:
+            if projector is None:
+                msg = "Target lat/lon requires a lanelet2 projector."
+                raise ValueError(msg)
+            gps = GPSPoint(self._target_lat, self._target_lon, 0.0)
+            utm = projector.forward(gps)
+            self._target_x, self._target_y = utm.x, utm.y
+
+        if self._target_x is not None and self._target_y is not None:
+            self._target_lanelet_id = Road.find_lanelet_id_by_position_on_lanelet_map(
+                lanelet_map, self._target_x, self._target_y
+            )
+            if self._target_lanelet_id is None:
+                msg = "Target position is not located in any lanelet."
+                raise ValueError(msg)
+            target_lanelet = lanelet_map.laneletLayer[self._target_lanelet_id]
+            self._target_s, self._target_t = Road.from_cart_to_frenet(
+                target_lanelet.centerline, self._target_x, self._target_y
+            )
+
+        if (
+            self._target_lanelet_id is not None
+            and self._target_s is not None
+            and self._target_t is not None
+            and (self._target_x is None or self._target_y is None)
+        ):
+            target_lanelet = lanelet_map.laneletLayer[self._target_lanelet_id]
+            self._target_x, self._target_y = Road.from_frenet_to_cart(
+                target_lanelet.centerline, self._target_s, self._target_t
+            )
+
+        # Check if target position is valid
+        if self._target_lanelet_id is None:
+            msg = "Target lanelet ID of a vehicle could not be determined."
+            raise ValueError(msg)
+
+        full_n_steps = self._n_steps_from_duration_dt(duration, dt)
+        active_duration = self._duration if self._duration is not None else duration
+
         # -- Build time-series arrays --
-        n_steps = self._n_steps_from_duration_dt(duration, dt)
+        n_steps = self._n_steps_from_duration_dt(active_duration, dt)
+        if n_steps <= 0:
+            pad_len = max(0, full_n_steps)
+            pad = np.full((pad_len,), np.nan)
+            self._a = pad.copy()
+            self._v = pad.copy()
+            self._x = pad.copy()
+            self._y = pad.copy()
+            self._heading = pad.copy()
+            self._compiled = True
+            return
 
         # a
         acceleration_vector = self._get_full_acceleration_vector(n_steps, dt)
@@ -364,16 +590,16 @@ class Vehicle(Renderable):
         # s
         driving_direction = -1 if self._inverse_driving_direction else 1
         lon_position_change_vector = driving_direction * speed_vector * dt
-        lon_position_vector = self._s0 * np.ones_like(speed_change_vector)
+        lon_position_vector = self._start_s * np.ones_like(speed_change_vector)
         lon_position_vector[1:] = (
             lon_position_vector[1:] + np.cumsum(lon_position_change_vector)[:-1]
         )
 
         # t
-        lat_offset_vector = self._t0 * np.ones((n_steps,))
+        lat_offset_vector = self._start_t * np.ones((n_steps,))
 
         # -- Determine route --
-        source_lanelet = lanelet_map.laneletLayer[self._lanelet_id]
+        source_lanelet = lanelet_map.laneletLayer[self._start_lanelet_id]
         if self._target_lanelet_id is not None:
             target_lanelet = lanelet_map.laneletLayer[self._target_lanelet_id]
         else:
@@ -384,7 +610,7 @@ class Vehicle(Renderable):
         route = routing_graph.getRoute(source_lanelet, target_lanelet)
 
         if route is None:
-            msg = f"Vehicle {self._vehicle_id}: No valid route found. Please check the route (lanelet_id: {self._lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+            msg = f"Vehicle {self._vehicle_id}: No valid route found. Please check the route (start_lanelet_id: {self._start_lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
             raise ValueError(msg)
 
         # FOR DEBUGGIN MAPS
@@ -409,7 +635,7 @@ class Vehicle(Renderable):
             lc_start_s = lon_position_vector[lc_start_step]
 
             if lc_start_s > lanelet2.geometry.length(lanelet_sequence.centerline):
-                msg = f"Vehicle {self._vehicle_id}: Path up to lane change position is not long enough. Please check the route (lanelet_id: {self._lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+                msg = f"Vehicle {self._vehicle_id}: Path up to lane change position is not long enough. Please check the route (lanelet_id: {self._start_lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
                 raise ValueError(msg)
 
             # -- Lane change section --
@@ -470,7 +696,7 @@ class Vehicle(Renderable):
                 # End of LC
                 # Find max possible t positon
                 x_lc1, y_lc1 = Road.from_frenet_to_cart(
-                    lc_source_lanelet.centerline, self._s0, 0
+                    lc_source_lanelet.centerline, self._start_s, 0
                 )
                 _, t_lc1 = Road.from_cart_to_frenet(
                     lc_target_lanelet.centerline, x_lc1, y_lc1
@@ -526,7 +752,7 @@ class Vehicle(Renderable):
 
             remaining_driven_dist = lon_position_vector[-1] - lc_end_s
             if remaining_driven_dist > remaining_path_length:
-                msg = f"Vehicle {self._vehicle_id} is reaching the end of the given path. Please check the route (lanelet_id: {self._lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+                msg = f"Vehicle {self._vehicle_id} is reaching the end of the given path. Please check the route (lanelet_id: {self._start_lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
                 raise ValueError(msg)
 
             # -- Compute global x, y for the whole lane change trajectory --
@@ -560,7 +786,7 @@ class Vehicle(Renderable):
             if total_driven_dist > lanelet2.geometry.length(
                 lanelet_sequence.centerline
             ):
-                msg = f"Vehicle {self._vehicle_id} is reaching the end of the given path. Please check the route (lanelet_id: {self._lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+                msg = f"Vehicle {self._vehicle_id} is reaching the end of the given path. Please check the route (lanelet_id: {self._start_lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
                 raise ValueError(msg)
 
             # Positions to cartesian
@@ -612,10 +838,27 @@ class Vehicle(Renderable):
         self._y = y
         self._heading = heading
 
+        if n_steps < full_n_steps:
+            pad_len = full_n_steps - n_steps
+            pad = np.full((pad_len,), np.nan)
+            self._a = np.concatenate((self._a, pad))
+            self._v = np.concatenate((self._v, pad))
+            self._x = np.concatenate((self._x, pad))
+            self._y = np.concatenate((self._y, pad))
+            self._heading = np.concatenate((self._heading, pad))
+
         self._compiled = True
 
     def get_boundary_rect(self) -> tuple[float, float, float, float]:
-        return (self._x.min(), self._y.min(), self._x.max(), self._y.max())
+        valid_mask = ~np.isnan(self._x) & ~np.isnan(self._y)
+        if not np.any(valid_mask):
+            return (np.nan, np.nan, np.nan, np.nan)
+        return (
+            np.nanmin(self._x[valid_mask]),
+            np.nanmin(self._y[valid_mask]),
+            np.nanmax(self._x[valid_mask]),
+            np.nanmax(self._y[valid_mask]),
+        )
 
     @staticmethod
     def _n_steps_from_duration_dt(duration: float, dt: float) -> int:
@@ -719,10 +962,14 @@ class Vehicle(Renderable):
             color = "r"
 
         if timestep is None:
+            if np.isnan(self._x[0]) or np.isnan(self._y[0]):
+                return
             x = self._x[0]
             y = self._y[0]
             heading = self._heading[0]
         else:
+            if np.isnan(self._x[timestep]) or np.isnan(self._y[timestep]):
+                return
             x = self._x[timestep]
             y = self._y[timestep]
             heading = self._heading[timestep]
@@ -760,8 +1007,17 @@ class Vehicle(Renderable):
 
     def _format_ax(self, ax: plt.Axes, *args, **kwargs) -> None:  # noqa: ARG002
         margin = 5
-        ax.set_xlim(np.min(self._x) - margin, np.max(self._x) + margin)
-        ax.set_ylim(np.min(self._y) - margin, np.max(self._y) + margin)
+        valid_mask = ~np.isnan(self._x) & ~np.isnan(self._y)
+        if not np.any(valid_mask):
+            return
+        ax.set_xlim(
+            np.nanmin(self._x[valid_mask]) - margin,
+            np.nanmax(self._x[valid_mask]) + margin,
+        )
+        ax.set_ylim(
+            np.nanmin(self._y[valid_mask]) - margin,
+            np.nanmax(self._y[valid_mask]) + margin,
+        )
 
         ax.set_aspect("equal")
 

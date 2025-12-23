@@ -79,24 +79,49 @@ class TestScenario:
         road = SyntheticRoad(3, 3.75, [StraightSegment(500, heading=0)])
 
         # Create ego configuration
-        ego_configuration = EgoConfiguration(1000, 50, 0, 27.78, 450, 0)
+        ego_configuration = EgoConfiguration(
+            start_lanelet_id=1000,
+            start_s=50,
+            start_t=0,
+            v0=27.78,
+            target_s=450,
+            target_t=0,
+        )
 
         # Create vehicles
 
         # A vehicle in front of the ego vehicle
         vehicle0_thw0 = 3
-        vehicle0_s0 = ego_configuration.s0 + ego_configuration.v0 * vehicle0_thw0
+        vehicle0_start_s = (
+            ego_configuration.start_s + ego_configuration.v0 * vehicle0_thw0
+        )
         vehicle0 = Vehicle(
-            0, ego_configuration.lanelet_id, vehicle0_s0, 0, ego_configuration.v0
+            0,
+            start_lanelet_id=ego_configuration.start_lanelet_id,
+            start_s=vehicle0_start_s,
+            start_t=0,
+            v0=ego_configuration.v0,
         )
 
         # A vehicle in front of vehicle 0
         vehicle1_thw0 = 3
-        vehicle1_s0 = vehicle0.s0 + vehicle0.v0 * vehicle1_thw0
-        vehicle1 = Vehicle(1, ego_configuration.lanelet_id, vehicle1_s0, 0, vehicle0.v0)
+        vehicle1_start_s = vehicle0.start_s + vehicle0.v0 * vehicle1_thw0
+        vehicle1 = Vehicle(
+            1,
+            start_lanelet_id=ego_configuration.start_lanelet_id,
+            start_s=vehicle1_start_s,
+            start_t=0,
+            v0=vehicle0.v0,
+        )
 
         # A vehicle on another lane
-        vehicle2 = Vehicle(2, 1001, ego_configuration.s0, 0, ego_configuration.v0)
+        vehicle2 = Vehicle(
+            2,
+            start_lanelet_id=1001,
+            start_s=ego_configuration.start_s,
+            start_t=0,
+            v0=ego_configuration.v0,
+        )
 
         vehicles = [vehicle0, vehicle1, vehicle2]
 
@@ -141,24 +166,49 @@ class TestScenario:
         road = SyntheticRoad(5, 3.75, [StraightSegment(500, heading=0)])
 
         # Create ego configuration
-        ego_configuration = EgoConfiguration(1000, 50, 0, 27.78, 450, 0)
+        ego_configuration = EgoConfiguration(
+            start_lanelet_id=1000,
+            start_s=50,
+            start_t=0,
+            v0=27.78,
+            target_s=450,
+            target_t=0,
+        )
 
         # Create vehicles
 
         # A vehicle in front of the ego vehicle
         vehicle0_thw0 = 3
-        vehicle0_s0 = ego_configuration.s0 + ego_configuration.v0 * vehicle0_thw0
+        vehicle0_start_s = (
+            ego_configuration.start_s + ego_configuration.v0 * vehicle0_thw0
+        )
         vehicle0 = Vehicle(
-            0, ego_configuration.lanelet_id, vehicle0_s0, 0, ego_configuration.v0
+            0,
+            start_lanelet_id=ego_configuration.start_lanelet_id,
+            start_s=vehicle0_start_s,
+            start_t=0,
+            v0=ego_configuration.v0,
         )
 
         # A vehicle in front of vehicle 0
         vehicle1_thw0 = 3
-        vehicle1_s0 = vehicle0.s0 + vehicle0.v0 * vehicle1_thw0
-        vehicle1 = Vehicle(1, ego_configuration.lanelet_id, vehicle1_s0, 0, vehicle0.v0)
+        vehicle1_start_s = vehicle0.start_s + vehicle0.v0 * vehicle1_thw0
+        vehicle1 = Vehicle(
+            1,
+            start_lanelet_id=ego_configuration.start_lanelet_id,
+            start_s=vehicle1_start_s,
+            start_t=0,
+            v0=vehicle0.v0,
+        )
 
         # A vehicle on another lane
-        vehicle2 = Vehicle(2, 1001, ego_configuration.s0, 0, ego_configuration.v0)
+        vehicle2 = Vehicle(
+            2,
+            start_lanelet_id=1001,
+            start_s=ego_configuration.start_s,
+            start_t=0,
+            v0=ego_configuration.v0,
+        )
 
         vehicles = [vehicle0, vehicle1, vehicle2]
 
@@ -344,24 +394,49 @@ class TestScenario:
         road = SyntheticRoad(3, 3.75, [StraightSegment(500, heading=0)])
 
         # Create ego configuration
-        ego_configuration = EgoConfiguration(1000, 50, 0, 27.78, 450, 0)
+        ego_configuration = EgoConfiguration(
+            start_lanelet_id=1000,
+            start_s=50,
+            start_t=0,
+            v0=27.78,
+            target_s=450,
+            target_t=0,
+        )
 
         # Create vehicles
 
         # A vehicle in front of the ego vehicle
         vehicle0_thw0 = 3
-        vehicle0_s0 = ego_configuration.s0 + ego_configuration.v0 * vehicle0_thw0
+        vehicle0_start_s = (
+            ego_configuration.start_s + ego_configuration.v0 * vehicle0_thw0
+        )
         vehicle0 = Vehicle(
-            0, ego_configuration.lanelet_id, vehicle0_s0, 0, ego_configuration.v0
+            0,
+            start_lanelet_id=ego_configuration.start_lanelet_id,
+            start_s=vehicle0_start_s,
+            start_t=0,
+            v0=ego_configuration.v0,
         )
 
         # A vehicle in front of vehicle 0
         vehicle1_thw0 = 3
-        vehicle1_s0 = vehicle0.s0 + vehicle0.v0 * vehicle1_thw0
-        vehicle1 = Vehicle(1, ego_configuration.lanelet_id, vehicle1_s0, 0, vehicle0.v0)
+        vehicle1_start_s = vehicle0.start_s + vehicle0.v0 * vehicle1_thw0
+        vehicle1 = Vehicle(
+            1,
+            start_lanelet_id=ego_configuration.start_lanelet_id,
+            start_s=vehicle1_start_s,
+            start_t=0,
+            v0=vehicle0.v0,
+        )
 
         # A vehicle on another lane
-        vehicle2 = Vehicle(2, 1001, ego_configuration.s0, 0, ego_configuration.v0)
+        vehicle2 = Vehicle(
+            2,
+            start_lanelet_id=1001,
+            start_s=ego_configuration.start_s,
+            start_t=0,
+            v0=ego_configuration.v0,
+        )
 
         vehicles = [vehicle0, vehicle1, vehicle2]
 

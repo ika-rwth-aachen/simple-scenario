@@ -296,9 +296,9 @@ class CommonroadInterface:
 
         # Ego initial state
         ego_initial_state = State(
-            position=np.array([self._ego_configuration.x0, self._ego_configuration.y0]),
+            position=np.array([self._ego_configuration.start_x, self._ego_configuration.start_y]),
             velocity=self._ego_configuration.v0,
-            orientation=self._ego_configuration.heading0,
+            orientation=self._ego_configuration.start_heading,
             yaw_rate=0.0,
             slip_angle=0.0,
             time_step=0,

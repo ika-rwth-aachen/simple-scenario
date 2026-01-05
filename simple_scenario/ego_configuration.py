@@ -340,7 +340,6 @@ class EgoConfiguration(Renderable):
         """
         controller for ego vehicle.
         """
-        self._check_is_compiled()
         return self._controller
 
     @property

@@ -87,6 +87,7 @@ class TestScenario:
             target_s=450,
             target_t=0,
         )
+        ego_configuration.compile(road)
 
         # Create vehicles
 
@@ -174,6 +175,7 @@ class TestScenario:
             target_s=450,
             target_t=0,
         )
+        ego_configuration.compile(road)
 
         # Create vehicles
 
@@ -402,6 +404,7 @@ class TestScenario:
             target_s=450,
             target_t=0,
         )
+        ego_configuration.compile(road)
 
         # Create vehicles
 

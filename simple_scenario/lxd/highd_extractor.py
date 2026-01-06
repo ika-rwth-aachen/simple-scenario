@@ -359,26 +359,14 @@ class HighdExtractor:
                 continue
 
             vehicle_id = cur_vehicle_id
-            # Find lanelet id for first time step the vehicle exists in the scenario
-            # Find first non nan value
-            other_track_first_valid_pos_x = other_track_x_during_scenario[
-                ~np.isnan(other_track_x_during_scenario)
-            ][0]
-            other_track_first_valid_pos_y = other_track_y_during_scenario[
-                ~np.isnan(other_track_y_during_scenario)
-            ][0]
-            other_track_initial_llt_id = relevant_road.find_lanelet_id_by_position(
-                other_track_first_valid_pos_x, other_track_first_valid_pos_y
-            )
 
             other_vehicle = Vehicle.from_data(
-                vehicle_id,
-                other_track_initial_llt_id,
-                other_track_x_during_scenario,
-                other_track_y_during_scenario,
-                other_track_heading_during_scenario,
-                other_track_v_during_scenario,
-                other_track_a_during_scenario,
+                vehicle_id=vehicle_id,
+                x=other_track_x_during_scenario,
+                y=other_track_y_during_scenario,
+                heading=other_track_heading_during_scenario,
+                v=other_track_v_during_scenario,
+                a=other_track_a_during_scenario,
                 vehicle_type_name="custom",
                 length=other_track_length,
                 width=other_track_width,

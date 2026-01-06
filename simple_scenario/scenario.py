@@ -413,10 +413,6 @@ class Scenario(Renderable):
             n_states = len(all_states)
             durations.append(n_states)
 
-            obstacle_lanelet_id = lanelet_network_wrapper.find_lanelet_id_by_position(
-                *obstacle.initial_state.position
-            )
-
             all_x = [obstacle.initial_state.position[0]]
             all_y = [obstacle.initial_state.position[1]]
             all_heading = [obstacle.initial_state.orientation]
@@ -438,13 +434,12 @@ class Scenario(Renderable):
             all_a = np.append(all_a, all_a[-1])
 
             vehicle = Vehicle.from_data(
-                obstacle.obstacle_id,
-                obstacle_lanelet_id,
-                all_x,
-                all_y,
-                all_heading,
-                all_v,
-                all_a,
+                vehicle_id=obstacle.obstacle_id,
+                x=all_x,
+                y=all_y,
+                heading=all_heading,
+                v=all_v,
+                a=all_a,
             )
 
             vehicles.append(vehicle)

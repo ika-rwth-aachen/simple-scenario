@@ -478,10 +478,9 @@ class Vehicle(Renderable):
 
     def compile(  # noqa: PLR0912
         self,
-        lanelet_map: LaneletMap,
+        road: Road,
         duration: float,
         dt: float,
-        road: Road | None = None,
     ) -> None:
         """
         Create absolute cartesian coordinates etc
@@ -527,14 +526,14 @@ class Vehicle(Renderable):
         lat_offset_vector = self._start_position["t"] * np.ones((n_steps,))
 
         # -- Determine route --
-        source_lanelet = lanelet_map.laneletLayer[self._start_position["lanelet_id"]]
+        source_lanelet = road.lanelet_map.laneletLayer[self._start_position["lanelet_id"]]
         if self._target_position["lanelet_id"] is not None:
-            target_lanelet = lanelet_map.laneletLayer[self._target_position["lanelet_id"]]
+            target_lanelet = road.lanelet_map.laneletLayer[self._target_position["lanelet_id"]]
         else:
             target_lanelet = source_lanelet
 
         # Establish routing_graph, route without lane changes, get shortest path and transform it into a lanelet_sequence
-        routing_graph = lanelet2.routing.RoutingGraph(lanelet_map, self._traffic_rules)
+        routing_graph = lanelet2.routing.RoutingGraph(road.lanelet_map, self._traffic_rules)
         route = routing_graph.getRoute(source_lanelet, target_lanelet)
 
         if route is None:
@@ -573,12 +572,12 @@ class Vehicle(Renderable):
                 lanelet_sequence.centerline, lc_start_s, 0
             )
             lc_source_llt_id = Road.find_lanelet_id_by_position_on_lanelet_map(
-                lanelet_map, lc_start_x, lc_start_y
+                road.lanelet_map, lc_start_x, lc_start_y
             )
             if lc_source_llt_id is None:
                 msg = f"Vehicle {self._vehicle_id}: Lane change after {self._lc_delay}s at s={lc_start_s}: No valid start lanelet at this position. Maybe there are more than one?"
                 raise ValueError(msg)
-            lc_source_lanelet = lanelet_map.laneletLayer[lc_source_llt_id]
+            lc_source_lanelet = road.lanelet_map.laneletLayer[lc_source_llt_id]
 
             # Check that there is a valid neighbour for the lane change
             if self._lc_direction == -1:
@@ -595,7 +594,7 @@ class Vehicle(Renderable):
             # Perform the lane change
             if self._lc_type == "polynomial":
                 lc_traj = self._generate_lc_trajectory(
-                    lanelet_map,
+                    road.lanelet_map,
                     lon_position_vector[lc_start_step],
                     speed_vector[lc_start_step],
                     lc_source_lanelet.id,

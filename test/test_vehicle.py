@@ -33,7 +33,7 @@ class TestVehicle:
 
         duration = 10
         dt = 0.1
-        vehicle.compile(road.lanelet_map, duration, dt)
+        vehicle.compile(road, duration, dt)
 
         vehicle.render(result_dir, plot_name="vehicle_default")
         vehicle.render(result_dir, plot_name="vehicle_clean", clean=True)
@@ -73,7 +73,7 @@ class TestVehicle:
 
         duration = 10
         dt = 0.1
-        vehicle.compile(road.lanelet_map, duration, dt)
+        vehicle.compile(road, duration, dt)
 
         vehicle.render(result_dir, plot_name="vehicle_lc_left_default")
         vehicle.render(result_dir, plot_name="vehicle_lc_left_clean", clean=True)
@@ -115,7 +115,7 @@ class TestVehicle:
 
         duration = 10
         dt = 0.1
-        vehicle.compile(road.lanelet_map, duration, dt)
+        vehicle.compile(road, duration, dt)
 
         vehicle.render(result_dir, plot_name="vehicle_lc_right_default")
         vehicle.render(result_dir, plot_name="vehicle_lc_right_clean", clean=True)

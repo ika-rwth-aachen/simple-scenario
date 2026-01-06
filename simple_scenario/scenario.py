@@ -477,10 +477,9 @@ class Scenario(Renderable):
         for vehicle in self._vehicles:
             if not vehicle.compiled:
                 vehicle.compile(
-                    self._road.lanelet_map,
+                    self._road,
                     self._duration,
                     self._dt,
-                    self._road,
                 )
 
         self._compiled = True

@@ -474,14 +474,13 @@ class Scenario(Renderable):
             self._ego_configuration.compile(self._road)
 
         # Compile vehicles
-        projector = getattr(self._road, "_llt_utm_projector", None)
         for vehicle in self._vehicles:
             if not vehicle.compiled:
                 vehicle.compile(
                     self._road.lanelet_map,
                     self._duration,
                     self._dt,
-                    projector=projector,
+                    self._road,
                 )
 
         self._compiled = True

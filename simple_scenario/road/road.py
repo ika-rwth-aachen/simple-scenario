@@ -12,6 +12,7 @@ from lanelet2.core import (
     LineString3d,
     Point3d,
     BasicPoint2d,
+    GPSPoint,
 )
 from lanelet2.geometry import findNearest
 
@@ -282,3 +283,44 @@ class Road(Renderable):
         ax.set_ylim(ymin - margin, ymax + margin)
 
         ax.set_aspect("equal")
+
+    def resolve_position(
+        self, position: dict[str, float | int | None]
+    ) -> lanelet2.core.Lanelet:
+        if position["lat"] is not None and position["lon"] is not None:
+            if self.llt_utm_projector is None:
+                msg = "Start lat/lon requires a lanelet2 projector."
+                raise ValueError(msg)
+            gps = GPSPoint(position["lat"], position["lon"], 0.0)
+            utm = self.llt_utm_projector.forward(gps)
+            position["x"], position["y"] = utm.x, utm.y
+
+        if position["x"] is not None and position["y"] is not None:
+            position["lanelet_id"] = self.find_lanelet_id_by_position(
+                position["x"], position["y"]
+            )
+            if position["lanelet_id"] is None:
+                msg = "Start position is not located in any lanelet."
+                raise ValueError(msg)
+            lanelet = self.lanelet_map.laneletLayer[position["lanelet_id"]]
+            position["s"], position["t"] = self.from_cart_to_frenet(
+                lanelet.centerline, position["x"], position["y"]
+            )
+
+        if (
+            position["lanelet_id"] is not None
+            and position["s"] is not None
+            and position["t"] is not None
+            and (position["x"] is None or position["y"] is None)
+        ):
+            lanelet = self.lanelet_map.laneletLayer[position["lanelet_id"]]
+            position["x"], position["y"] = self.from_frenet_to_cart(
+                lanelet.centerline, position["s"], position["t"]
+            )
+
+        # Check if lanelet is valid
+        if position["lanelet_id"] is None:
+            msg = "lanelet ID could not be determined."
+            raise ValueError(msg)
+
+        return self.lanelet_map.laneletLayer[position["lanelet_id"]]

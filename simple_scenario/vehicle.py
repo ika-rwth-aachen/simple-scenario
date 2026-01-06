@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 from vehiclemodels.parameters_vehicle1 import parameters_vehicle1
 from vehiclemodels.parameters_vehicle2 import parameters_vehicle2
 from vehiclemodels.parameters_vehicle3 import parameters_vehicle3
-from lanelet2.core import GPSPoint
 
 from .road.road import Road
 from .rendering import Renderable
@@ -160,21 +159,27 @@ class Vehicle(Renderable):
             "duration": duration,
         }
 
+        self._start_position = {
+            "lanelet_id": start_lanelet_id,
+            "s": start_s,
+            "t": start_t,
+            "x": start_x,
+            "y": start_y,
+            "lat": start_lat,
+            "lon": start_lon,
+        }
+
+        self._target_position = {
+            "lanelet_id": target_lanelet_id if target_lanelet_id is not None else start_lanelet_id,
+            "s": target_s,
+            "t": target_t,
+            "x": target_x,
+            "y": target_y,
+            "lat": target_lat,
+            "lon": target_lon,
+        }
+
         self._vehicle_id = vehicle_id
-        self._start_lanelet_id = start_lanelet_id
-        self._start_s = start_s
-        self._start_t = start_t
-        self._start_x = start_x
-        self._start_y = start_y
-        self._start_lat = start_lat
-        self._start_lon = start_lon
-        self._target_lanelet_id = target_lanelet_id if target_lanelet_id is not None else start_lanelet_id
-        self._target_s = target_s
-        self._target_t = target_t
-        self._target_x = target_x
-        self._target_y = target_y
-        self._target_lat = target_lat
-        self._target_lon = target_lon
         self._v0 = v0
         self._a0 = a0
         self._a_delay = a_delay
@@ -293,98 +298,98 @@ class Vehicle(Renderable):
         if self._initialized_from_data:
             msg = "Not possible to access start_lanelet_id when initialized from data."
             raise Exception(msg)
-        return self._start_lanelet_id
+        return self._start_position["lanelet_id"]
 
     @property
     def start_s(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access start_s when initialized from data."
             raise Exception(msg)
-        return self._start_s
+        return self._start_position["s"]
 
     @property
     def start_t(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access start_t when initialized from data."
             raise Exception(msg)
-        return self._start_t
+        return self._start_position["t"]
 
     @property
     def start_x(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access start_x when initialized from data."
             raise Exception(msg)
-        return self._start_x
+        return self._start_position["x"]
 
     @property
     def start_y(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access start_y when initialized from data."
             raise Exception(msg)
-        return self._start_y
+        return self._start_position["y"]
 
     @property
     def start_lat(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access start_lat when initialized from data."
             raise Exception(msg)
-        return self._start_lat
+        return self._start_position["lat"]
 
     @property
     def start_lon(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access start_lon when initialized from data."
             raise Exception(msg)
-        return self._start_lon
+        return self._start_position["lon"]
 
     @property
     def target_lanelet_id(self) -> int:
         if self._initialized_from_data:
             msg = "Not possible to access target_lanelet_id when initialized from data."
             raise Exception(msg)
-        return self._target_lanelet_id
+        return self._target_position["lanelet_id"]
 
     @property
     def target_s(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access target_s when initialized from data."
             raise Exception(msg)
-        return self._target_s
+        return self._target_position["s"]
 
     @property
     def target_t(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access target_t when initialized from data."
             raise Exception(msg)
-        return self._target_t
+        return self._target_position["t"]
 
     @property
     def target_x(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access target_x when initialized from data."
             raise Exception(msg)
-        return self._target_x
+        return self._target_position["x"]
 
     @property
     def target_y(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access target_y when initialized from data."
             raise Exception(msg)
-        return self._target_y
+        return self._target_position["y"]
 
     @property
     def target_lat(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access target_lat when initialized from data."
             raise Exception(msg)
-        return self._target_lat
+        return self._target_position["lat"]
 
     @property
     def target_lon(self) -> float:
         if self._initialized_from_data:
             msg = "Not possible to access target_lon when initialized from data."
             raise Exception(msg)
-        return self._target_lon
+        return self._target_position["lon"]
 
     @property
     def v0(self) -> float:
@@ -476,91 +481,14 @@ class Vehicle(Renderable):
         lanelet_map: LaneletMap,
         duration: float,
         dt: float,
-        projector: object | None = None,
+        road: Road | None = None,
     ) -> None:
         """
         Create absolute cartesian coordinates etc
         """
 
-        # Start situation
-        if self._start_lat is not None and self._start_lon is not None:
-            if projector is None:
-                msg = "Start lat/lon requires a lanelet2 projector."
-                raise ValueError(msg)
-            gps = GPSPoint(self._start_lat, self._start_lon, 0.0)
-            utm = projector.forward(gps)
-            self._start_x, self._start_y = utm.x, utm.y
-
-        if self._start_x is not None and self._start_y is not None:
-            self._start_lanelet_id = Road.find_lanelet_id_by_position_on_lanelet_map(
-                lanelet_map, self._start_x, self._start_y
-            )
-            if self._start_lanelet_id is None:
-                msg = "Start position is not located in any lanelet."
-                raise ValueError(msg)
-            start_lanelet = lanelet_map.laneletLayer[self._start_lanelet_id]
-            self._start_s, self._start_t = Road.from_cart_to_frenet(
-                start_lanelet.centerline, self._start_x, self._start_y
-            )
-
-        if (
-            self._start_lanelet_id is not None
-            and self._start_s is not None
-            and self._start_t is not None
-            and (self._start_x is None or self._start_y is None)
-        ):
-            lanelet = lanelet_map.laneletLayer[self._start_lanelet_id]
-            self._start_x, self._start_y = Road.from_frenet_to_cart(
-                lanelet.centerline, self._start_s, self._start_t
-            )
-
-        # Check if start position is valid
-        if self._start_lanelet_id is None:
-            msg = "Start lanelet ID of a vehicle could not be determined."
-            raise ValueError(msg)
-        if self._start_s is None:
-            msg = "Start longitudinal position of a vehicle could not be determined."
-            raise ValueError(msg)
-        if self._start_t is None:
-            msg = "Start lateral offset of a vehicle could not be determined."
-            raise ValueError(msg)
-
-        # Target situation
-        if self._target_lat is not None and self._target_lon is not None:
-            if projector is None:
-                msg = "Target lat/lon requires a lanelet2 projector."
-                raise ValueError(msg)
-            gps = GPSPoint(self._target_lat, self._target_lon, 0.0)
-            utm = projector.forward(gps)
-            self._target_x, self._target_y = utm.x, utm.y
-
-        if self._target_x is not None and self._target_y is not None:
-            self._target_lanelet_id = Road.find_lanelet_id_by_position_on_lanelet_map(
-                lanelet_map, self._target_x, self._target_y
-            )
-            if self._target_lanelet_id is None:
-                msg = "Target position is not located in any lanelet."
-                raise ValueError(msg)
-            target_lanelet = lanelet_map.laneletLayer[self._target_lanelet_id]
-            self._target_s, self._target_t = Road.from_cart_to_frenet(
-                target_lanelet.centerline, self._target_x, self._target_y
-            )
-
-        if (
-            self._target_lanelet_id is not None
-            and self._target_s is not None
-            and self._target_t is not None
-            and (self._target_x is None or self._target_y is None)
-        ):
-            target_lanelet = lanelet_map.laneletLayer[self._target_lanelet_id]
-            self._target_x, self._target_y = Road.from_frenet_to_cart(
-                target_lanelet.centerline, self._target_s, self._target_t
-            )
-
-        # Check if target position is valid
-        if self._target_lanelet_id is None:
-            msg = "Target lanelet ID of a vehicle could not be determined."
-            raise ValueError(msg)
+        road.resolve_position(self._start_position)
+        road.resolve_position(self._target_position)
 
         full_n_steps = self._n_steps_from_duration_dt(duration, dt)
         active_duration = self._duration if self._duration is not None else duration
@@ -590,18 +518,18 @@ class Vehicle(Renderable):
         # s
         driving_direction = -1 if self._inverse_driving_direction else 1
         lon_position_change_vector = driving_direction * speed_vector * dt
-        lon_position_vector = self._start_s * np.ones_like(speed_change_vector)
+        lon_position_vector = self._start_position["s"] * np.ones_like(speed_change_vector)
         lon_position_vector[1:] = (
             lon_position_vector[1:] + np.cumsum(lon_position_change_vector)[:-1]
         )
 
         # t
-        lat_offset_vector = self._start_t * np.ones((n_steps,))
+        lat_offset_vector = self._start_position["t"] * np.ones((n_steps,))
 
         # -- Determine route --
-        source_lanelet = lanelet_map.laneletLayer[self._start_lanelet_id]
-        if self._target_lanelet_id is not None:
-            target_lanelet = lanelet_map.laneletLayer[self._target_lanelet_id]
+        source_lanelet = lanelet_map.laneletLayer[self._start_position["lanelet_id"]]
+        if self._target_position["lanelet_id"] is not None:
+            target_lanelet = lanelet_map.laneletLayer[self._target_position["lanelet_id"]]
         else:
             target_lanelet = source_lanelet
 
@@ -610,7 +538,7 @@ class Vehicle(Renderable):
         route = routing_graph.getRoute(source_lanelet, target_lanelet)
 
         if route is None:
-            msg = f"Vehicle {self._vehicle_id}: No valid route found. Please check the route (start_lanelet_id: {self._start_lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+            msg = f"Vehicle {self._vehicle_id}: No valid route found. Please check the route (start_lanelet_id: {self._start_position['lanelet_id']} -> target_lanelet_id: {self._target_position['lanelet_id']})."
             raise ValueError(msg)
 
         # FOR DEBUGGIN MAPS
@@ -635,7 +563,7 @@ class Vehicle(Renderable):
             lc_start_s = lon_position_vector[lc_start_step]
 
             if lc_start_s > lanelet2.geometry.length(lanelet_sequence.centerline):
-                msg = f"Vehicle {self._vehicle_id}: Path up to lane change position is not long enough. Please check the route (lanelet_id: {self._start_lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+                msg = f"Vehicle {self._vehicle_id}: Path up to lane change position is not long enough. Please check the route (lanelet_id: {self._start_position['lanelet_id']} -> target_lanelet_id: {self._target_position['lanelet_id']})."
                 raise ValueError(msg)
 
             # -- Lane change section --
@@ -696,7 +624,7 @@ class Vehicle(Renderable):
                 # End of LC
                 # Find max possible t positon
                 x_lc1, y_lc1 = Road.from_frenet_to_cart(
-                    lc_source_lanelet.centerline, self._start_s, 0
+                    lc_source_lanelet.centerline, self._start_position["s"], 0
                 )
                 _, t_lc1 = Road.from_cart_to_frenet(
                     lc_target_lanelet.centerline, x_lc1, y_lc1
@@ -752,7 +680,7 @@ class Vehicle(Renderable):
 
             remaining_driven_dist = lon_position_vector[-1] - lc_end_s
             if remaining_driven_dist > remaining_path_length:
-                msg = f"Vehicle {self._vehicle_id} is reaching the end of the given path. Please check the route (lanelet_id: {self._start_lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+                msg = f"Vehicle {self._vehicle_id} is reaching the end of the given path. Please check the route (lanelet_id: {self._start_position['lanelet_id']} -> target_lanelet_id: {self._target_position['lanelet_id']})."
                 raise ValueError(msg)
 
             # -- Compute global x, y for the whole lane change trajectory --
@@ -786,7 +714,7 @@ class Vehicle(Renderable):
             if total_driven_dist > lanelet2.geometry.length(
                 lanelet_sequence.centerline
             ):
-                msg = f"Vehicle {self._vehicle_id} is reaching the end of the given path. Please check the route (lanelet_id: {self._start_lanelet_id} -> target_lanelet_id: {self._target_lanelet_id})."
+                msg = f"Vehicle {self._vehicle_id} is reaching the end of the given path. Please check the route (lanelet_id: {self._start_position['lanelet_id']} -> target_lanelet_id: {self._target_position['lanelet_id']})."
                 raise ValueError(msg)
 
             # Positions to cartesian

@@ -1,7 +1,3 @@
-# DEPRECATION NOTICE
-
-:warning: **This repository is no longer maintained. Please use the public version instead: https://github.com/ika-rwth-aachen/simple-scenario** :warning:
-
 # simple-scenario
 
 <img src="https://github.com/ika-rwth-aachen/simple-scenario/blob/main/simple-scenario.svg?raw=True" width="400px" style="margin: 10px;">

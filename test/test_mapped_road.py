@@ -8,7 +8,7 @@ from simple_scenario.road import MappedRoad
 class TestMappedRoad:
     DATA_DIR = Path(__file__).parent / "assets" / "atc"
     OPENDRIVE_MAP = DATA_DIR / "aldenhoven.xodr"
-    LANELET2_MAP = DATA_DIR / "ATC_demo_2024-05-24.osm"
+    LANELET2_MAP = DATA_DIR / "aldenhoven.osm"
 
     RESULT_DIR = Path(__file__).parent / "results" / "test_mapped_road"
     RESULT_DIR.mkdir(exist_ok=True)

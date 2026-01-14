@@ -2,7 +2,7 @@
   "scenario_id": "atc_scenario",
   "road": {
     "from": {
-      "lanelet2_map_file": "ATC_demo_2024-05-24.osm",
+      "lanelet2_map_file": "aldenhoven.osm",
       "opendrive_map_file": "aldenhoven.xodr"
     }
   },

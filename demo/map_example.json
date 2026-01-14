@@ -1,9 +1,9 @@
 {
-    "scenario_id": "atc_multilane_roundabout_right",
+    "scenario_id": "map_example",
     "road": {
         "from": {
-            "opendrive_map_file": "./aldenhoven.xodr",
-            "lanelet2_map_file": "./aldenhoven.osm"
+            "opendrive_map_file": "../../test/assets/atc/aldenhoven.xodr",
+            "lanelet2_map_file": "../../test/assets/atc/aldenhoven.osm"
         }
     },
     "ego_configuration": {
@@ -12,8 +12,7 @@
         "target_lat": 50.9073867698906,
         "target_lon": 6.225902023079251,
         "v0": 0.0,
-        "vehicle_type_name": "medium",
-        "controller": "ros_vehicle_control_route_action.py"
+        "vehicle_type_name": "medium"
     },
     "vehicles": [
         {
@@ -30,9 +29,7 @@
             "lc_direction": 0,
             "lc_delay": 0.0,
             "lc_duration": 0.0,
-            "vehicle_type_name": "medium",
-            "depends_on_ego": true,
-            "duration": 15.0
+            "vehicle_type_name": "medium"
         },
         {
             "vehicle_id": 1,
@@ -48,34 +45,9 @@
             "lc_direction": 0,
             "lc_delay": 0.0,
             "lc_duration": 0.0,
-            "vehicle_type_name": "medium",
-            "depends_on_ego": true,
-            "duration": 25.0
+            "vehicle_type_name": "medium"
         }
     ],
     "duration": 60.0,
-    "dt": 0.1,
-    "reference_to_map": "/Game/aldenhoven/Maps/aldenhoven/aldenhoven",
-    "carla_metrics": [
-        {
-            "name": "criteria_RunningStopTest"
-        },
-        {
-            "name": "criteria_RunningRedLightTest"
-        },
-        {
-            "name": "criteria_CollisionTest"
-        },
-        {
-            "name": "criteria_WrongLaneTest"
-        },
-        {
-            "name": "criteria_OnSidewalkTest"
-        },
-        {
-            "name": "criteria_DrivenDistanceTest",
-            "parameterRef": "distance_success",
-            "rule": "greaterThan"
-        }
-    ]
+    "dt": 0.1
 }

@@ -260,7 +260,10 @@ class Scenario(Renderable):
         compiled_config["ego_configuration"] = ego_configuration
 
         # -- Vehicles --
-        vehicles = [Vehicle(**vehicle_config) for vehicle_config in config["vehicles"]]
+        if 'vehicles' in config:
+            vehicles = [Vehicle(**vehicle_config) for vehicle_config in config["vehicles"]]
+        else:
+            vehicles = []
         compiled_config["vehicles"] = vehicles
 
         # -- openDRIVE reference --

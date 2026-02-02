@@ -17,6 +17,4 @@ def main(config: str) -> Path:
 
 
 if __name__ == "__main__":
-    main("scripts/config-synthetic.json")
-    main("scripts/config.json")
     main("scripts/simple_scenario.json")

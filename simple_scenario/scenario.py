@@ -1016,25 +1016,43 @@ class Scenario(Renderable):
         Run by `esmini --osc "D:\Programme\esmini-2.37.10\resources\test_openx_export_default\test.xosc" --window 60 60 1024 576`
         """  # noqa: W605
 
-        # Paths (relative to xodr dir of esmini folder)
         vehicle_catalog_path = "../xosc/Catalogs/Vehicles"
         model_blue_car_path = "../models/car_blue.osgb"
         model_red_car_path = "../models/car_red.osgb"
 
-        # Create parameters of the scenario
         scenario_parameters = xosc.ParameterDeclarations()
 
-        # Create catalogs
         catalog = xosc.Catalog()
         catalog.add_catalog("VehicleCatalog", vehicle_catalog_path)
 
-        # Create road network from opendrive file
         road_network = xosc.RoadNetwork(roadfile=str(odr_path))
 
-        # Create entities
+        entities = self._create_openx_entities(model_blue_car_path, model_red_car_path)
+        init, step_time = self._create_openx_init()
+        storyboard = self._create_openx_storyboard(init)
+        story = self._create_openx_story(step_time)
+        storyboard.add_story(story)
+
+        osc_scenario = xosc.Scenario(
+            name=self._scenario_id,
+            author="simple_scenario",
+            parameters=scenario_parameters,
+            entities=entities,
+            storyboard=storyboard,
+            roadnetwork=road_network,
+            catalog=catalog,
+            osc_minor_version=1,
+        )
+
+        return osc_scenario
+
+    def _create_openx_entities(
+        self,
+        model_blue_car_path: str,
+        model_red_car_path: str,
+    ) -> xosc.Entities:
         entities = xosc.Entities()
 
-        # Create ego vehicle object
         ego_boundingbox = xosc.BoundingBox(
             width=self._ego_configuration.width,
             length=self._ego_configuration.length,
@@ -1060,14 +1078,11 @@ class Scenario(Renderable):
         ego_vehicle_object.add_property("model_id", "ego")
         ego_vehicle_object.add_property("type", ego_vehicle_id)
 
-        # Add entities
         entities.add_scenario_object(ego_vehicle_id, ego_vehicle_object)
 
-        # Create other vehicle objects
         max_acceleration = 9.81
         max_deceleration = 9.81
 
-        vehicle_objects = {}
         for vehicle in self._vehicles:
             vehicle_boundingbox = xosc.BoundingBox(
                 width=vehicle.width,
@@ -1093,22 +1108,23 @@ class Scenario(Renderable):
             vehicle_object.add_property_file(model_red_car_path)
             vehicle_object.add_property("model_id", f"other_{vehicle.id}")
             vehicle_object.add_property("type", "other_vehicle")
-            vehicle_objects[vehicle.id] = vehicle_object
             entities.add_scenario_object(f"other_{vehicle.id}", vehicle_object)
 
-        # Create the init part of the storyboard
+        return entities
+
+    def _create_openx_init(
+        self,
+    ) -> tuple[xosc.Init, xosc.TransitionDynamics]:
         init = xosc.Init()
         step_time = xosc.TransitionDynamics(
             xosc.DynamicsShapes.step, xosc.DynamicsDimension.time, 1
         )
 
-        # Ego Speed
         ego_initial_speed_action = xosc.AbsoluteSpeedAction(
             self._ego_configuration.v0, step_time
         )
-        init.add_init_action(ego_vehicle_id, ego_initial_speed_action)
+        init.add_init_action("ego_vehicle", ego_initial_speed_action)
 
-        # Ego Teleport
         ego_start_x, ego_start_y, ego_start_heading = (
             self._road.from_llt_local_to_opendrive_local(
                 self._ego_configuration.start_x,
@@ -1119,15 +1135,12 @@ class Scenario(Renderable):
         ego_start_position_action = xosc.TeleportAction(
             xosc.WorldPosition(ego_start_x, ego_start_y, h=ego_start_heading)
         )
-        init.add_init_action(ego_vehicle_id, ego_start_position_action)
+        init.add_init_action("ego_vehicle", ego_start_position_action)
 
-        # Ego Controller
         if self._ego_configuration.controller:
             controller_value = self._ego_configuration.controller
             controller_props = xosc.Properties()
-            controller_props.add_property(
-                name="module", value=controller_value
-            )
+            controller_props.add_property(name="module", value=controller_value)
 
             controller_props.add_property(
                 name="initial_speed",
@@ -1141,19 +1154,21 @@ class Scenario(Renderable):
             ego_override_controller_value_action.gear_active = False
 
             ego_controller_action = xosc.ControllerAction(
-                assignControllerAction=xosc.AssignControllerAction(controller=controller),
+                assignControllerAction=xosc.AssignControllerAction(
+                    controller=controller
+                ),
                 overrideControllerValueAction=ego_override_controller_value_action,
             )
-            init.add_init_action(ego_vehicle_id, ego_controller_action)
+            init.add_init_action("ego_vehicle", ego_controller_action)
 
-        # Other vehicles
         for vehicle in self._vehicles:
-
             if not vehicle.depends_on_ego:
                 vehicle_initial_speed_action = xosc.AbsoluteSpeedAction(
                     vehicle.v0, step_time
                 )
-                init.add_init_action(f"other_{vehicle.id}", vehicle_initial_speed_action)
+                init.add_init_action(
+                    f"other_{vehicle.id}", vehicle_initial_speed_action
+                )
 
             xodr_local_x, xodr_local_y, xodr_local_heading = (
                 self._road.from_llt_local_to_opendrive_local(
@@ -1163,20 +1178,32 @@ class Scenario(Renderable):
             vehicle_initial_position_action = xosc.TeleportAction(
                 xosc.WorldPosition(xodr_local_x, xodr_local_y, h=xodr_local_heading)
             )
+            init.add_init_action(
+                f"other_{vehicle.id}", vehicle_initial_position_action
+            )
 
-            init.add_init_action(f"other_{vehicle.id}", vehicle_initial_position_action)
+        return init, step_time
 
-        ## Init the storyboard
+    def _create_openx_storyboard(self, init: xosc.Init) -> xosc.StoryBoard:
         if self._carla_metrics:
             stoptrigger_storyboard = xosc.ConditionGroup("stop")
             for test in self._carla_metrics:
-
                 name = test["name"]
                 delay = float(test["delay"]) if test.get("delay") else 0.0
-                condition_edge = getattr(xosc.ConditionEdge, test["conditionEdge"]) if test.get("conditionEdge") else xosc.ConditionEdge.rising
-                reference_parameter = test["parameterRef"] if test.get("parameterRef") else ""
+                condition_edge = (
+                    getattr(xosc.ConditionEdge, test["conditionEdge"])
+                    if test.get("conditionEdge")
+                    else xosc.ConditionEdge.rising
+                )
+                reference_parameter = (
+                    test["parameterRef"] if test.get("parameterRef") else ""
+                )
                 value = int(test["value"]) if test.get("value") else 0
-                rule = getattr(xosc.Rule, test["rule"]) if test.get("rule") else xosc.Rule.lessThan
+                rule = (
+                    getattr(xosc.Rule, test["rule"])
+                    if test.get("rule")
+                    else xosc.Rule.lessThan
+                )
 
                 if name == "criteria_DrivenDistanceTest" and value == 0.0:
                     value = 0.95 * self._ego_configuration.route_length
@@ -1190,17 +1217,30 @@ class Scenario(Renderable):
                 )
                 stoptrigger_storyboard.add_condition(stoptrigger)
 
-            storyboard = xosc.StoryBoard(init, stoptrigger_storyboard)
-        else:
-            storyboard = xosc.StoryBoard(init)
+            return xosc.StoryBoard(init, stoptrigger_storyboard)
 
-        ## Init the story
+        return xosc.StoryBoard(init)
+
+    def _create_openx_story(
+        self, step_time: xosc.TransitionDynamics
+    ) -> xosc.Story:
         storyparam = xosc.ParameterDeclarations()
         story = xosc.Story(f"Act_scenario_{self._scenario_id}", storyparam)
 
-        # Init the Act
-        stoptrigger_act = xosc.Trigger("stop")
+        stoptrigger_act = self._create_openx_stoptrigger_act()
+        act = xosc.Act(f"Act_scenario_{self._scenario_id}", stoptrigger=stoptrigger_act)
 
+        self._add_ego_route_to_act(act)
+
+        for vehicle in self._vehicles:
+            self._add_vehicle_follow_trajectory(act, vehicle, step_time)
+
+        story.add_act(act)
+
+        return story
+
+    def _create_openx_stoptrigger_act(self) -> xosc.Trigger:
+        stoptrigger_act = xosc.Trigger("stop")
         stoptrigger_time = xosc.ValueTrigger(
             "StoptriggerTime",
             0,
@@ -1228,174 +1268,116 @@ class Scenario(Renderable):
             stoptrigger_route_group.add_condition(stoptrigger_ego_route_done)
             stoptrigger_act.add_conditiongroup(stoptrigger_route_group)
 
-        act = xosc.Act(f"Act_scenario_{self._scenario_id}", stoptrigger=stoptrigger_act)
+        return stoptrigger_act
 
-        # Add AssignRouteAction for ego vehicle to the act
-
-        # Init the maneuvergroup
+    def _add_ego_route_to_act(self, act: xosc.Act) -> None:
         maneuver_group = xosc.ManeuverGroup("ManeuverGroup_ego_vehicle")
-
-        # Add the actor to the maneuver group
         maneuver_group.add_actor("ego_vehicle")
 
-        # Init the maneuver
         maneuver = xosc.Maneuver("Maneuver_ego_vehicle")
-
-        # Create the event
         event = xosc.Event("Event_ego_vehicle", xosc.Priority.parallel)
 
-        # Init route
         ego_route = xosc.Route("Route_ego_vehicle", closed=False)
 
-        # Create waypoints from start end end position
         ego_start_x, ego_start_y, ego_start_heading = (
             self._road.from_llt_local_to_opendrive_local(
                 self._ego_configuration.start_x,
                 self._ego_configuration.start_y,
-                self._ego_configuration.start_heading
+                self._ego_configuration.start_heading,
             )
         )
-
         ego_target_x, ego_target_y = (
             self._road.from_llt_local_to_opendrive_local(
                 self._ego_configuration.target_x,
-                self._ego_configuration.target_y
+                self._ego_configuration.target_y,
             )
         )
 
-        # Add waypoints
         vehicle_position = xosc.WorldPosition(
-                    ego_start_x, ego_start_y, h=ego_start_heading
-                )
-        ego_route.add_waypoint(vehicle_position, "shortest")
-
-        vehicle_position = xosc.WorldPosition(
-                    ego_target_x, ego_target_y
-                )
-        ego_route.add_waypoint(vehicle_position, "shortest")
-
-        # Add route to action
-        action = xosc.AssignRouteAction(ego_route)
-
-        # Add action to the event
-        event.add_action(
-            "AssignRouteAction_ego_vehicle",
-            action
+            ego_start_x, ego_start_y, h=ego_start_heading
         )
+        ego_route.add_waypoint(vehicle_position, "shortest")
 
-        # Add the event to the maneuver
+        vehicle_position = xosc.WorldPosition(ego_target_x, ego_target_y)
+        ego_route.add_waypoint(vehicle_position, "shortest")
+
+        action = xosc.AssignRouteAction(ego_route)
+        event.add_action("AssignRouteAction_ego_vehicle", action)
+
         maneuver.add_event(event)
-        # Add the maneuver to the maneuver group
         maneuver_group.add_maneuver(maneuver)
-
-        # Add the maneuver group to the act
         act.add_maneuver_group(maneuver_group)
 
-        # Add FollowTrajectoryActions for all vehicles to the event
-        for vehicle in self._vehicles:
-            # Init the maneuvergroup
-            maneuver_group = xosc.ManeuverGroup(f"ManeuverGroup_vehicle_{vehicle.id}")
+    def _add_vehicle_follow_trajectory(
+        self,
+        act: xosc.Act,
+        vehicle: Vehicle,
+        step_time: xosc.TransitionDynamics,
+    ) -> None:
+        maneuver_group = xosc.ManeuverGroup(f"ManeuverGroup_vehicle_{vehicle.id}")
+        maneuver_group.add_actor(f"other_{vehicle.id}")
 
-            # Add the actor to the maneuver group
-            maneuver_group.add_actor(f"other_{vehicle.id}")
+        maneuver = xosc.Maneuver(f"Maneuver_vehicle_{vehicle.id}")
+        event = xosc.Event(f"Event_vehicle_{vehicle.id}", xosc.Priority.overwrite)
 
-            # Init the maneuver
-            maneuver = xosc.Maneuver(f"Maneuver_vehicle_{vehicle.id}")
-
-            # Create the event
-            event = xosc.Event(f"Event_vehicle_{vehicle.id}", xosc.Priority.overwrite)
-            # Init trajectory
-            vehicle_trajectory = xosc.Trajectory(
-                f"Trajectory_vehicle_{vehicle.id}", closed=False
-            )
-
-            # Create polyline
-            vehicle_positions = []
-            valid_indices = np.where(~np.isnan(vehicle.x))[0]
-            if valid_indices.size == 0:
-                continue
-            for i in valid_indices:
-                xodr_local_x, xodr_local_y, xodr_local_heading = (
-                    self._road.from_llt_local_to_opendrive_local(
-                        vehicle.x[i], vehicle.y[i], vehicle.heading[i]
-                    )
-                )
-                vehicle_position = xosc.WorldPosition(
-                    xodr_local_x, xodr_local_y, h=xodr_local_heading
-                )
-                vehicle_positions.append(vehicle_position)
-
-            vehicle_step_times = (valid_indices * self._dt).tolist()
-            vehicle_polyline = xosc.Polyline(vehicle_step_times, vehicle_positions)
-
-            # Fill trajectory with polyline
-            vehicle_trajectory.add_shape(vehicle_polyline)
-
-            # Create follow trajectory action with trajectory, reference_domain, scale and offset need to be set such that the speed is also adjusted in the simulation (here: esmini).
-            vehicle_follow_trajectory_action = xosc.FollowTrajectoryAction(
-                vehicle_trajectory,
-                xosc.FollowingMode.position,
-                reference_domain=xosc.ReferenceContext.absolute,
-                scale=1,
-                offset=0,
-            )
-
-            # Add the action to the event
-            event.add_action(
-                f"FollowTrajectoryAction_vehicle_{vehicle.id}",
-                vehicle_follow_trajectory_action,
-            )
-
-            # Add initial speed action and start condition if vehicle depends on ego vehicle
-            if vehicle.depends_on_ego:
-                vehicle_speed_action = xosc.AbsoluteSpeedAction(
-                    vehicle.v0, step_time
-                )
-                event.add_action(
-                    f"SpeedAction_vehicle_{vehicle.id}",
-                    vehicle_speed_action
-                )
-
-                condition = xosc.EntityTrigger(
-                    f"EntityDistanceCondition_vehicle_{vehicle.id}",
-                    0,
-                    xosc.ConditionEdge.rising,
-                    xosc.TraveledDistanceCondition(1.0),
-                    "ego_vehicle",
-                    xosc.TriggeringEntitiesRule.any,
-                )
-
-                condition_group = xosc.ConditionGroup()
-                condition_group.add_condition(condition)
-
-                start_trigger = xosc.Trigger("start")
-                start_trigger.add_conditiongroup(condition_group)
-
-                event.add_trigger(start_trigger)
-
-            # Add the event to the maneuver
-            maneuver.add_event(event)
-            # Add the maneuver to the maneuver group
-            maneuver_group.add_maneuver(maneuver)
-
-            # Add the maneuver group to the act
-            act.add_maneuver_group(maneuver_group)
-
-        # Add the act to the story
-        story.add_act(act)
-        # Add the story to the storyboard
-        storyboard.add_story(story)
-
-        ## Put everything together to create the scenario
-        osc_scenario = xosc.Scenario(
-            name=self._scenario_id,
-            author="simple_scenario",
-            parameters=scenario_parameters,
-            entities=entities,
-            storyboard=storyboard,
-            roadnetwork=road_network,
-            catalog=catalog,
-            osc_minor_version=1,
+        vehicle_trajectory = xosc.Trajectory(
+            f"Trajectory_vehicle_{vehicle.id}", closed=False
         )
 
-        return osc_scenario
+        vehicle_positions = []
+        valid_indices = np.where(~np.isnan(vehicle.x))[0]
+        if valid_indices.size == 0:
+            return
+        for i in valid_indices:
+            xodr_local_x, xodr_local_y, xodr_local_heading = (
+                self._road.from_llt_local_to_opendrive_local(
+                    vehicle.x[i], vehicle.y[i], vehicle.heading[i]
+                )
+            )
+            vehicle_position = xosc.WorldPosition(
+                xodr_local_x, xodr_local_y, h=xodr_local_heading
+            )
+            vehicle_positions.append(vehicle_position)
+
+        vehicle_step_times = (valid_indices * self._dt).tolist()
+        vehicle_polyline = xosc.Polyline(vehicle_step_times, vehicle_positions)
+        vehicle_trajectory.add_shape(vehicle_polyline)
+
+        vehicle_follow_trajectory_action = xosc.FollowTrajectoryAction(
+            vehicle_trajectory,
+            xosc.FollowingMode.position,
+            reference_domain=xosc.ReferenceContext.absolute,
+            scale=1,
+            offset=0,
+        )
+        event.add_action(
+            f"FollowTrajectoryAction_vehicle_{vehicle.id}",
+            vehicle_follow_trajectory_action,
+        )
+
+        if vehicle.depends_on_ego:
+            vehicle_speed_action = xosc.AbsoluteSpeedAction(vehicle.v0, step_time)
+            event.add_action(
+                f"SpeedAction_vehicle_{vehicle.id}",
+                vehicle_speed_action,
+            )
+
+            condition = xosc.EntityTrigger(
+                f"EntityDistanceCondition_vehicle_{vehicle.id}",
+                0,
+                xosc.ConditionEdge.rising,
+                xosc.TraveledDistanceCondition(1.0),
+                "ego_vehicle",
+                xosc.TriggeringEntitiesRule.any,
+            )
+
+            condition_group = xosc.ConditionGroup()
+            condition_group.add_condition(condition)
+
+            start_trigger = xosc.Trigger("start")
+            start_trigger.add_conditiongroup(condition_group)
+            event.add_trigger(start_trigger)
+
+        maneuver.add_event(event)
+        maneuver_group.add_maneuver(maneuver)
+        act.add_maneuver_group(maneuver_group)

@@ -67,7 +67,8 @@ class Scenario(Renderable):
         from_data: bool = False,
         check_feasibility: bool = False,
         reference_to_map: str | Path | None = None,
-        carla_metrics: list[str] | None = None
+        carla_metrics: list[str] | None = None,
+        stop_on_ego_route_complete: bool = False,
     ) -> None:
         logger.info(f"Create simple scenario '{scenario_id}'")
 
@@ -92,7 +93,8 @@ class Scenario(Renderable):
             "duration": duration,
             "dt": dt,
             "reference_to_map": reference_to_map,
-            "carla_metrics": carla_metrics
+            "carla_metrics": carla_metrics,
+            "stop_on_ego_route_complete": stop_on_ego_route_complete,
         }
 
         self._scenario_id = scenario_id
@@ -103,6 +105,7 @@ class Scenario(Renderable):
         self._dt = dt
         self._reference_to_map = reference_to_map
         self._carla_metrics = carla_metrics
+        self._stop_on_ego_route_complete = stop_on_ego_route_complete
 
         # CR interface
         self._cr_interface = None
@@ -270,6 +273,12 @@ class Scenario(Renderable):
         # -- CARLA metrics --
         if config.get("carla_metrics"):
             compiled_config["carla_metrics"] = config["carla_metrics"]
+
+        # -- Stop on ego route complete --
+        if config.get("stop_on_ego_route_complete") is not None:
+            compiled_config["stop_on_ego_route_complete"] = config[
+                "stop_on_ego_route_complete"
+            ]
 
         # -- Scenario --
         scenario = cls(**compiled_config)
@@ -1177,7 +1186,7 @@ class Scenario(Renderable):
         story = xosc.Story(f"Act_scenario_{self._scenario_id}", storyparam)
 
         # Init the Act
-        stoptrigger_act = xosc.ConditionGroup("stop")
+        stoptrigger_act = xosc.Trigger("stop")
 
         stoptrigger_time = xosc.ValueTrigger(
             "StoptriggerTime",
@@ -1186,7 +1195,25 @@ class Scenario(Renderable):
             xosc.SimulationTimeCondition(self._duration, xosc.Rule.greaterThan),
             triggeringpoint="stop",
         )
-        stoptrigger_act.add_condition(stoptrigger_time)
+        stoptrigger_time_group = xosc.ConditionGroup("stop")
+        stoptrigger_time_group.add_condition(stoptrigger_time)
+        stoptrigger_act.add_conditiongroup(stoptrigger_time_group)
+
+        if self._stop_on_ego_route_complete:
+            stoptrigger_ego_route_done = xosc.ValueTrigger(
+                "StoptriggerEgoRoute",
+                0,
+                xosc.ConditionEdge.rising,
+                xosc.StoryboardElementStateCondition(
+                    xosc.StoryboardElementType.event,
+                    "Event_ego_vehicle",
+                    xosc.StoryboardElementState.completeState,
+                ),
+                triggeringpoint="stop",
+            )
+            stoptrigger_route_group = xosc.ConditionGroup("stop")
+            stoptrigger_route_group.add_condition(stoptrigger_ego_route_done)
+            stoptrigger_act.add_conditiongroup(stoptrigger_route_group)
 
         act = xosc.Act(f"Act_scenario_{self._scenario_id}", stoptrigger=stoptrigger_act)
 

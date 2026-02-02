@@ -39,5 +39,6 @@
         }
     ],
     "duration": 60.0,
-    "dt": 0.1
+    "dt": 0.1,
+    "stop_on_ego_route_complete": true
 }

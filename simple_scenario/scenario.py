@@ -263,7 +263,7 @@ class Scenario(Renderable):
         compiled_config["ego_configuration"] = ego_configuration
 
         # -- Vehicles --
-        if 'vehicles' in config:
+        if "vehicles" in config:
             vehicles = [Vehicle(**vehicle_config) for vehicle_config in config["vehicles"]]
         else:
             vehicles = []
@@ -947,52 +947,62 @@ class Scenario(Renderable):
             msg = "Compile mode not available"
             raise ValueError(msg)
 
-        if isinstance(result_dir, list) and not (mode == "openx" and 0 < len(result_dir) <= 2):
+        if isinstance(result_dir, list) and not (
+            mode == "openx" and 0 < len(result_dir) <= 2
+        ):
             msg = "Too less or many result directories provided."
             raise ValueError(msg)
 
         result_dir = result_dir if isinstance(result_dir, list) else [result_dir]
         result_dir = [Path(d) if d is not None else d for d in result_dir]
 
-        if mode == "config":
-            if self._initialized_from_data:
-                msg = "Cannot save to config if the scenario has been initialized from data."
-                raise ValueError(msg)
+        save_handlers = {
+            "config": self._save_config,
+            "cr": self._save_cr,
+            "openx": self._save_openx,
+            "lanelet2": self._save_lanelet2,
+        }
+        save_handlers[mode](result_dir)
 
-            config_file = result_dir[0] / f"{self._scenario_id}.json"
+    def _save_config(self, result_dir: list[Path | None]) -> None:
+        if self._initialized_from_data:
+            msg = "Cannot save to config if the scenario has been initialized from data."
+            raise ValueError(msg)
 
-            with config_file.open("w") as f:
-                json.dump(self._config, f, indent=2)
+        config_file = result_dir[0] / f"{self._scenario_id}.json"
 
-        elif mode == "cr":
-            self.get_cr_interface().to_xml(result_dir[0])
+        with config_file.open("w") as f:
+            json.dump(self._config, f, indent=2)
 
-        elif mode == "openx":
-            if self._initialized_from_data:
-                msg = "Cannot save to openx if the scenario has been initialized from data."
-                raise ValueError(msg)
+    def _save_cr(self, result_dir: list[Path | None]) -> None:
+        self.get_cr_interface().to_xml(result_dir[0])
 
-            scr_dir = result_dir[0]
-            odr_dir = result_dir[0] if len(result_dir) == 1 else result_dir[1]
+    def _save_openx(self, result_dir: list[Path | None]) -> None:
+        if self._initialized_from_data:
+            msg = "Cannot save to openx if the scenario has been initialized from data."
+            raise ValueError(msg)
 
-            # OpenDRIVE
-            if odr_dir is not None:
-                odr_path = self._road.save_opendrive_map(odr_dir, self._scenario_id)
+        scr_dir = result_dir[0]
+        odr_dir = result_dir[0] if len(result_dir) == 1 else result_dir[1]
 
-            # OpenSCENARIO
-            if self._reference_to_map:
-                odr_path = Path(self._reference_to_map)
+        # OpenDRIVE
+        if odr_dir is not None:
+            odr_path = self._road.save_opendrive_map(odr_dir, self._scenario_id)
 
-            if scr_dir is not None:
-                osc = self._create_openscenario(odr_path)
-                osc.write_xml(str(scr_dir / f"{self._scenario_id}.xosc"))
+        # OpenSCENARIO
+        if self._reference_to_map:
+            odr_path = Path(self._reference_to_map)
 
-        elif mode == "lanelet2":
-            if self._initialized_from_data:
-                msg = "Cannot save to lanelet2 if the scenario has been initialized from data."
-                raise ValueError(msg)
+        if scr_dir is not None:
+            osc = self._create_openscenario(odr_path)
+            osc.write_xml(str(scr_dir / f"{self._scenario_id}.xosc"))
 
-            self._road.save_lanelet2_map(result_dir[0], self._scenario_id)
+    def _save_lanelet2(self, result_dir: list[Path | None]) -> None:
+        if self._initialized_from_data:
+            msg = "Cannot save to lanelet2 if the scenario has been initialized from data."
+            raise ValueError(msg)
+
+        self._road.save_lanelet2_map(result_dir[0], self._scenario_id)
 
     def _create_openscenario(self, odr_path: str | Path) -> xosc.Scenario:
         """

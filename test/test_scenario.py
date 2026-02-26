@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import json
 import numpy as np
 import pytest
+import xml.etree.ElementTree as ET
 
 from pathlib import Path
 
@@ -63,6 +66,57 @@ class TestScenario:
         else:
             with pytest.raises(ModuleNotFoundError):
                 scenario.save(result_dir, mode="cr")
+
+    @staticmethod
+    def _get_world_positions(xosc_path: Path) -> list:
+        root = ET.parse(xosc_path).getroot()  # noqa: S314
+        return list(root.findall(".//WorldPosition"))
+
+    @staticmethod
+    def _minimal_openx_config(
+        scenario_id: str,
+        ego_z: float | None = None,
+        vehicle_z: float | None = None,
+    ) -> dict:
+        config = {
+            "scenario_id": scenario_id,
+            "road": {
+                "n_lanes": 2,
+                "lane_width": 3.75,
+                "segments": [{"length": 200, "heading": 0.0}],
+                "speed_limit": 120,
+                "x0": 0,
+                "y0": 0,
+            },
+            "ego_configuration": {
+                "start_lanelet_id": 1000,
+                "start_s": 10,
+                "start_t": 0,
+                "target_s": 120,
+                "target_t": 0,
+                "v0": 10,
+                "vehicle_type_name": "medium",
+            },
+            "vehicles": [
+                {
+                    "vehicle_id": 1,
+                    "start_lanelet_id": 1000,
+                    "start_s": 20,
+                    "start_t": 0,
+                    "v0": 8,
+                    "vehicle_type_name": "medium",
+                }
+            ],
+            "duration": 1.0,
+            "dt": 0.2,
+        }
+
+        if ego_z is not None:
+            config["ego_configuration"]["z"] = ego_z
+        if vehicle_z is not None:
+            config["vehicles"][0]["z"] = vehicle_z
+
+        return config
 
     def test_scenario_creation(self):
         """
@@ -260,6 +314,42 @@ class TestScenario:
 
         # Check feasibility
         self._check_feasible(scenario)
+
+    def test_openx_export_with_z(self):
+        result_dir = self.RESULT_DIR / "test_openx_export_with_z"
+        result_dir.mkdir(exist_ok=True)
+
+        scenario = Scenario.from_config(
+            self._minimal_openx_config("test_openx_z", ego_z=1.25, vehicle_z=2.5)
+        )
+        scenario.save(result_dir, mode="openx")
+
+        assert np.isclose(scenario.ego_configuration.z, 1.25)
+        assert np.isclose(scenario.vehicles[0].z, 2.5)
+
+        xosc_path = result_dir / "test_openx_z.xosc"
+        world_positions = self._get_world_positions(xosc_path)
+        z_values = [
+            float(position.attrib["z"])
+            for position in world_positions
+            if "z" in position.attrib
+        ]
+
+        assert len(z_values) == len(world_positions)
+        assert any(np.isclose(z, 1.25) for z in z_values)
+        assert any(np.isclose(z, 2.5) for z in z_values)
+
+    def test_openx_export_without_z_keeps_previous_behavior(self):
+        result_dir = self.RESULT_DIR / "test_openx_export_without_z"
+        result_dir.mkdir(exist_ok=True)
+
+        scenario = Scenario.from_config(self._minimal_openx_config("test_openx_no_z"))
+        scenario.save(result_dir, mode="openx")
+
+        xosc_path = result_dir / "test_openx_no_z.xosc"
+        world_positions = self._get_world_positions(xosc_path)
+
+        assert all("z" not in position.attrib for position in world_positions)
 
     def test_load_from_config_file(self):
         result_dir = self.RESULT_DIR / "test_load_from_config_file"

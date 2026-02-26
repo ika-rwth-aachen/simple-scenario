@@ -26,6 +26,7 @@ class EgoConfiguration(Renderable):
         start_y: float | None = None,
         start_lat: float | None = None,
         start_lon: float | None = None,
+        z: float | None = None,
         target_lanelet_id: int | None = None,
         target_s: float | None = None,
         target_t: float | None = None,
@@ -50,6 +51,7 @@ class EgoConfiguration(Renderable):
         start_y: Start y coordinate, used instead of start_lanelet_id/start_s/start_t if provided
         start_lat: Start latitude coordinate, used instead of start_lanelet_id/start_s/start_t if provided
         start_lon: Start longitude coordinate, used instead of start_lanelet_id/start_s/start_t if provided
+        z: Constant altitude in meters for OpenSCENARIO world positions
         target_lanelet_id: ID of the target lanelet, if None, start_lanelet_id is used
         target_s: Target longitudinal position in lanelet with target_lanelet_id
         target_t: Target lateral offset to the center line of the given lanelet in m
@@ -75,6 +77,7 @@ class EgoConfiguration(Renderable):
             "start_y": start_y,
             "start_lat": start_lat,
             "start_lon": start_lon,
+            "z": z,
             "target_lanelet_id": target_lanelet_id,
             "target_s": target_s,
             "target_t": target_t,
@@ -100,6 +103,7 @@ class EgoConfiguration(Renderable):
             "y": start_y,
             "lat": start_lat,
             "lon": start_lon,
+            "z": z,
         }
 
         self._target_position = {
@@ -223,6 +227,14 @@ class EgoConfiguration(Renderable):
         """
         self._check_is_compiled()
         return self._start_position["lon"]
+
+    @property
+    def z(self) -> float:
+        """
+        Constant z coordinate of the ego vehicle.
+        """
+        self._check_is_compiled()
+        return self._start_position["z"]
 
     @property
     def target_lanelet_id(self) -> int:

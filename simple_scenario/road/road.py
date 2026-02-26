@@ -291,7 +291,8 @@ class Road(Renderable):
             if self.llt_utm_projector is None:
                 msg = "Start lat/lon requires a lanelet2 projector."
                 raise ValueError(msg)
-            gps = GPSPoint(position["lat"], position["lon"], 0.0)
+            z = position.get("z")
+            gps = GPSPoint(position["lat"], position["lon"], 0.0 if z is None else z)
             utm = self.llt_utm_projector.forward(gps)
             position["x"], position["y"] = utm.x, utm.y
 

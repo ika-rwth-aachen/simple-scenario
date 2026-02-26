@@ -1112,6 +1112,21 @@ class Scenario(Renderable):
 
         return entities
 
+    @staticmethod
+    def _create_world_position(
+        x: float,
+        y: float,
+        *,
+        h: float | None = None,
+        z: float | None = None,
+    ) -> xosc.WorldPosition:
+        kwargs = {}
+        if h is not None:
+            kwargs["h"] = h
+        if z is not None:
+            kwargs["z"] = z
+        return xosc.WorldPosition(x, y, **kwargs)
+
     def _create_openx_init(
         self,
     ) -> tuple[xosc.Init, xosc.TransitionDynamics]:
@@ -1133,7 +1148,12 @@ class Scenario(Renderable):
             )
         )
         ego_start_position_action = xosc.TeleportAction(
-            xosc.WorldPosition(ego_start_x, ego_start_y, h=ego_start_heading)
+            self._create_world_position(
+                ego_start_x,
+                ego_start_y,
+                h=ego_start_heading,
+                z=self._ego_configuration.z,
+            )
         )
         init.add_init_action("ego_vehicle", ego_start_position_action)
 
@@ -1176,7 +1196,12 @@ class Scenario(Renderable):
                 )
             )
             vehicle_initial_position_action = xosc.TeleportAction(
-                xosc.WorldPosition(xodr_local_x, xodr_local_y, h=xodr_local_heading)
+                self._create_world_position(
+                    xodr_local_x,
+                    xodr_local_y,
+                    h=xodr_local_heading,
+                    z=vehicle.z,
+                )
             )
             init.add_init_action(
                 f"other_{vehicle.id}", vehicle_initial_position_action
@@ -1293,12 +1318,19 @@ class Scenario(Renderable):
             )
         )
 
-        vehicle_position = xosc.WorldPosition(
-            ego_start_x, ego_start_y, h=ego_start_heading
+        vehicle_position = self._create_world_position(
+            ego_start_x,
+            ego_start_y,
+            h=ego_start_heading,
+            z=self._ego_configuration.z,
         )
         ego_route.add_waypoint(vehicle_position, "shortest")
 
-        vehicle_position = xosc.WorldPosition(ego_target_x, ego_target_y)
+        vehicle_position = self._create_world_position(
+            ego_target_x,
+            ego_target_y,
+            z=self._ego_configuration.z,
+        )
         ego_route.add_waypoint(vehicle_position, "shortest")
 
         action = xosc.AssignRouteAction(ego_route)
@@ -1334,8 +1366,11 @@ class Scenario(Renderable):
                     vehicle.x[i], vehicle.y[i], vehicle.heading[i]
                 )
             )
-            vehicle_position = xosc.WorldPosition(
-                xodr_local_x, xodr_local_y, h=xodr_local_heading
+            vehicle_position = self._create_world_position(
+                xodr_local_x,
+                xodr_local_y,
+                h=xodr_local_heading,
+                z=vehicle.z,
             )
             vehicle_positions.append(vehicle_position)
 

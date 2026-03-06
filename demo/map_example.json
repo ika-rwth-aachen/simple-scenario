@@ -2,45 +2,29 @@
     "scenario_id": "map_example",
     "road": {
         "from": {
-            "opendrive_map_file": "../../test/assets/atc/aldenhoven.xodr",
-            "lanelet2_map_file": "../../test/assets/atc/aldenhoven.osm"
+            "opendrive_map_file": "../test/assets/synthetic-curve/synthetic-curve.xodr",
+            "lanelet2_map_file": "../test/assets/synthetic-curve/synthetic-curve.osm"
         }
     },
     "ego_configuration": {
-        "start_lat": 50.90768453892142,
-        "start_lon": 6.226575820159271,
-        "target_lat": 50.9073867698906,
-        "target_lon": 6.225902023079251,
+        "start_lat": 49.9999491,
+        "start_lon": 9.000691,
+        "target_lat": 50.0005538,
+        "target_lon": 9.0029404,
         "v0": 0.0,
         "vehicle_type_name": "medium"
     },
     "vehicles": [
         {
             "vehicle_id": 0,
-            "start_lanelet_id": 7751,
-            "start_s": 0.0,
+            "start_lanelet_id": 1001,
+            "start_s": 10.0,
             "start_t": 0.0,
-            "target_lat": 50.90717909947147,
-            "target_lon": 6.225848784392664,
+            "target_lat": 50.0005538,
+            "target_lon": 9.0029404,
             "v0": 5.0,
             "a0": 0.0,
             "a_delay": 0.0,
-            "a_profile": "constant",
-            "lc_direction": 0,
-            "lc_delay": 0.0,
-            "lc_duration": 0.0,
-            "vehicle_type_name": "medium"
-        },
-        {
-            "vehicle_id": 1,
-            "start_lanelet_id": 7924,
-            "start_s": 0.0,
-            "start_t": 0.0,
-            "target_lat": 50.9073903449276, 
-            "target_lon": 6.225886238768645,
-            "v0": 5.0,
-            "a0": 0.0,
-            "a_delay": 0,
             "a_profile": "constant",
             "lc_direction": 0,
             "lc_delay": 0.0,

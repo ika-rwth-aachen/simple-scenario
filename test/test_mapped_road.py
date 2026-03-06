@@ -6,9 +6,9 @@ from simple_scenario.road import MappedRoad
 
 
 class TestMappedRoad:
-    DATA_DIR = Path(__file__).parent / "assets" / "atc"
-    OPENDRIVE_MAP = DATA_DIR / "aldenhoven.xodr"
-    LANELET2_MAP = DATA_DIR / "aldenhoven.osm"
+    DATA_DIR = Path(__file__).parent / "assets" / "synthetic-curve"
+    OPENDRIVE_MAP = DATA_DIR / "synthetic-curve.xodr"
+    LANELET2_MAP = DATA_DIR / "synthetic-curve.osm"
 
     RESULT_DIR = Path(__file__).parent / "results" / "test_mapped_road"
     RESULT_DIR.mkdir(exist_ok=True)
@@ -33,7 +33,7 @@ class TestMappedRoad:
 
         road.render(result_dir, plot_name=test_name)
 
-    def test_mapped_road_atc(self):
+    def test_mapped_road(self):
         test_name = "test_mapped_road_from_api"
         result_dir = self._create_result_dir(test_name)
 
@@ -62,4 +62,4 @@ class TestMappedRoad:
 
 if __name__ == "__main__":
     tester = TestMappedRoad()
-    tester.test_mapped_road_atc()
+    tester.test_mapped_road()

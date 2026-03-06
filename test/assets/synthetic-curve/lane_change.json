@@ -1,16 +1,16 @@
 {
-  "scenario_id": "atc_scenario",
+  "scenario_id": "synthetic-curve-lane-change",
   "road": {
     "from": {
-      "lanelet2_map_file": "aldenhoven.osm",
-      "opendrive_map_file": "aldenhoven.xodr"
+      "lanelet2_map_file": "synthetic-curve.osm",
+      "opendrive_map_file": "synthetic-curve.xodr"
     }
   },
   "ego_configuration": {
-    "start_lanelet_id": 10000598,
+    "start_lanelet_id": 1000,
     "start_s": 5,
     "start_t": 0,
-    "target_lanelet_id": 10000487,
+    "target_lanelet_id": 13881,
     "target_s": 10,
     "target_t": 0,
     "v0": 10,
@@ -19,10 +19,10 @@
   "vehicles": [
     {
       "vehicle_id": 0,
-      "start_lanelet_id": 10000620,
+      "start_lanelet_id": 1001,
       "start_s": 5,
       "start_t": 0,
-      "target_lanelet_id": 10000535,
+      "target_lanelet_id": 13881,
       "v0": 5,
       "a0": 0,
       "lc_direction": -1,
@@ -30,6 +30,6 @@
       "vehicle_type_name": "medium"
     }
   ],
-  "duration": 15.0,
+  "duration": 30.0,
   "dt": 0.1
 }

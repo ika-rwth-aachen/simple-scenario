@@ -107,7 +107,9 @@ class EgoConfiguration(Renderable):
         }
 
         self._target_position = {
-            "lanelet_id": target_lanelet_id if target_lanelet_id is not None else start_lanelet_id,
+            "lanelet_id": target_lanelet_id
+            if target_lanelet_id is not None
+            else start_lanelet_id,
             "s": target_s,
             "t": target_t,
             "x": target_x,
@@ -394,9 +396,13 @@ class EgoConfiguration(Renderable):
         # Assumption: heading is along the lanelet
         # Moved along lanelet for 1s
         x1, y1 = road.from_frenet_to_cart(
-            start_lanelet.centerline, self._start_position["s"] + 0.5, self._start_position["t"]
+            start_lanelet.centerline,
+            self._start_position["s"] + 0.5,
+            self._start_position["t"],
         )
-        start_heading = np.arctan2(y1 - self._start_position["y"], x1 - self._start_position["x"])
+        start_heading = np.arctan2(
+            y1 - self._start_position["y"], x1 - self._start_position["x"]
+        )
 
         # Calculate route length
         routing_graph = lanelet2.routing.RoutingGraph(
@@ -413,7 +419,9 @@ class EgoConfiguration(Renderable):
         target_lanelet_length = lanelet2.geometry.length2d(target_lanelet)
         route_length = route.length2d()
         route_length -= self._start_position["s"]
-        route_length -= target_lanelet_length - min(self._target_position["s"], target_lanelet_length)
+        route_length -= target_lanelet_length - min(
+            self._target_position["s"], target_lanelet_length
+        )
 
         if route_length < -1e-6:
             msg = (

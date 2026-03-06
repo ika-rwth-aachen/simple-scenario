@@ -264,7 +264,9 @@ class Scenario(Renderable):
 
         # -- Vehicles --
         if "vehicles" in config:
-            vehicles = [Vehicle(**vehicle_config) for vehicle_config in config["vehicles"]]
+            vehicles = [
+                Vehicle(**vehicle_config) for vehicle_config in config["vehicles"]
+            ]
         else:
             vehicles = []
         compiled_config["vehicles"] = vehicles
@@ -559,9 +561,7 @@ class Scenario(Renderable):
             vehicle_xmin, vehicle_ymin, vehicle_xmax, vehicle_ymax = (
                 vehicle.get_boundary_rect()
             )
-            if np.isnan(
-                [vehicle_xmin, vehicle_ymin, vehicle_xmax, vehicle_ymax]
-            ).any():
+            if np.isnan([vehicle_xmin, vehicle_ymin, vehicle_xmax, vehicle_ymax]).any():
                 continue
             xmin = min(xmin, vehicle_xmin)
             ymin = min(ymin, vehicle_ymin)
@@ -640,9 +640,7 @@ class Scenario(Renderable):
 
                 psi_dot = np.diff(heading, append=heading[-1]) / self._dt
                 safe_v = np.nan * np.ones_like(v)
-                safe_v[~np.isclose(v, 0, atol=1e-3)] = v[
-                    ~np.isclose(v, 0, atol=1e-3)
-                ]
+                safe_v[~np.isclose(v, 0, atol=1e-3)] = v[~np.isclose(v, 0, atol=1e-3)]
                 steering_angle = np.arctan(np.divide(psi_dot * l_wb, safe_v))
                 steering_angle[np.isnan(steering_angle)] = 0.0
 
@@ -761,7 +759,6 @@ class Scenario(Renderable):
         *args,
         **kwargs,
     ) -> None:
-
         plot_name = f"{self._scenario_id}"
         if plot_name_suffix:
             plot_name += f"_{plot_name_suffix}"
@@ -966,7 +963,9 @@ class Scenario(Renderable):
 
     def _save_config(self, result_dir: list[Path | None]) -> None:
         if self._initialized_from_data:
-            msg = "Cannot save to config if the scenario has been initialized from data."
+            msg = (
+                "Cannot save to config if the scenario has been initialized from data."
+            )
             raise ValueError(msg)
 
         config_file = result_dir[0] / f"{self._scenario_id}.json"
@@ -1203,9 +1202,7 @@ class Scenario(Renderable):
                     z=vehicle.z,
                 )
             )
-            init.add_init_action(
-                f"other_{vehicle.id}", vehicle_initial_position_action
-            )
+            init.add_init_action(f"other_{vehicle.id}", vehicle_initial_position_action)
 
         return init, step_time
 
@@ -1246,9 +1243,7 @@ class Scenario(Renderable):
 
         return xosc.StoryBoard(init)
 
-    def _create_openx_story(
-        self, step_time: xosc.TransitionDynamics
-    ) -> xosc.Story:
+    def _create_openx_story(self, step_time: xosc.TransitionDynamics) -> xosc.Story:
         storyparam = xosc.ParameterDeclarations()
         story = xosc.Story(f"Act_scenario_{self._scenario_id}", storyparam)
 
@@ -1311,11 +1306,9 @@ class Scenario(Renderable):
                 self._ego_configuration.start_heading,
             )
         )
-        ego_target_x, ego_target_y = (
-            self._road.from_llt_local_to_opendrive_local(
-                self._ego_configuration.target_x,
-                self._ego_configuration.target_y,
-            )
+        ego_target_x, ego_target_y = self._road.from_llt_local_to_opendrive_local(
+            self._ego_configuration.target_x,
+            self._ego_configuration.target_y,
         )
 
         vehicle_position = self._create_world_position(

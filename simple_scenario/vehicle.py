@@ -174,7 +174,9 @@ class Vehicle(Renderable):
         }
 
         self._target_position = {
-            "lanelet_id": target_lanelet_id if target_lanelet_id is not None else start_lanelet_id,
+            "lanelet_id": target_lanelet_id
+            if target_lanelet_id is not None
+            else start_lanelet_id,
             "s": target_s,
             "t": target_t,
             "x": target_x,
@@ -273,7 +275,7 @@ class Vehicle(Renderable):
             width=width,
             from_data=True,
             depends_on_ego=depends_on_ego,
-            duration=duration
+            duration=duration,
         )
 
         vehicle.set_data(x, y, heading, v, a)
@@ -528,7 +530,9 @@ class Vehicle(Renderable):
         # s
         driving_direction = -1 if self._inverse_driving_direction else 1
         lon_position_change_vector = driving_direction * speed_vector * dt
-        lon_position_vector = self._start_position["s"] * np.ones_like(speed_change_vector)
+        lon_position_vector = self._start_position["s"] * np.ones_like(
+            speed_change_vector
+        )
         lon_position_vector[1:] = (
             lon_position_vector[1:] + np.cumsum(lon_position_change_vector)[:-1]
         )
@@ -537,14 +541,20 @@ class Vehicle(Renderable):
         lat_offset_vector = self._start_position["t"] * np.ones((n_steps,))
 
         # -- Determine route --
-        source_lanelet = road.lanelet_map.laneletLayer[self._start_position["lanelet_id"]]
+        source_lanelet = road.lanelet_map.laneletLayer[
+            self._start_position["lanelet_id"]
+        ]
         if self._target_position["lanelet_id"] is not None:
-            target_lanelet = road.lanelet_map.laneletLayer[self._target_position["lanelet_id"]]
+            target_lanelet = road.lanelet_map.laneletLayer[
+                self._target_position["lanelet_id"]
+            ]
         else:
             target_lanelet = source_lanelet
 
         # Establish routing_graph, route without lane changes, get shortest path and transform it into a lanelet_sequence
-        routing_graph = lanelet2.routing.RoutingGraph(road.lanelet_map, self._traffic_rules)
+        routing_graph = lanelet2.routing.RoutingGraph(
+            road.lanelet_map, self._traffic_rules
+        )
         route = routing_graph.getRoute(source_lanelet, target_lanelet)
 
         if route is None:

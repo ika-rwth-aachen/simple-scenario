@@ -12,18 +12,18 @@ from commonroad_dc.pycrccosy import CurvilinearCoordinateSystem
 from shapely.errors import ShapelyDeprecationWarning
 
 from .traffic_sign_fixed import TraffiSignFixed
-from ..road.road import Road
+from ..road.synthetic_road import SyntheticRoad
 
 
 class LaneletNetworkCreator:
-    def __init__(self, road: Road) -> None:
+    def __init__(self, road: SyntheticRoad) -> None:
         self._lanelet_network = self._create_lanelet_network(road)
 
     @property
     def lanelet_network(self) -> LaneletNetwork:
         return self._lanelet_network
 
-    def _create_lanelet_network(self, road: Road) -> LaneletNetwork:
+    def _create_lanelet_network(self, road: SyntheticRoad) -> LaneletNetwork:
         """
         Generate CR-LaneletNetwork from Road object
         """

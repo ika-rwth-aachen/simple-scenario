@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 from .scenario_plot_context_manager import create_scenario_plot_ax
 
 
-class Renderable:
+class Renderable(ABC):
     def render(
         self,
         plot_dir_or_ax: Path | plt.Axes,

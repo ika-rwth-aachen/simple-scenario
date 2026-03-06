@@ -15,18 +15,18 @@
     "y0": 0
   },
   "ego_configuration": {
-    "lanelet_id": 1000,
-    "s0": 50,
-    "t0": 0,
+    "start_lanelet_id": 1000,
+    "start_s": 50,
+    "start_t": 0,
     "v0": 27.78,
     "vehicle_type_name": "medium"
   },
   "vehicles": [
     {
       "vehicle_id": 0,
-      "lanelet_id": 1001,
-      "s0": 60,
-      "t0": 0,
+      "start_lanelet_id": 1001,
+      "start_s": 60,
+      "start_t": 0,
       "v0": 22.59,
       "a0": -4.0,
       "a_delay": 0.0,

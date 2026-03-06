@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from simple_scenario import Scenario, EgoConfiguration, Vehicle
-from simple_scenario.road import Road, StraightSegment
+from simple_scenario.road import SyntheticRoad, StraightSegment
 
 
 class TestOncomingTraffic:
@@ -12,22 +12,34 @@ class TestOncomingTraffic:
         result_dir = self.RESULT_DIR / "test_scenario_gen"
         result_dir.mkdir(exist_ok=True)
 
-        road = Road(2, 3.75, [StraightSegment(500)])
+        road = SyntheticRoad(2, 3.75, [StraightSegment(500)])
 
-        ego = EgoConfiguration(1000, 50, 0, 100 / 3.6)
+        ego = EgoConfiguration(
+            start_lanelet_id=1000,
+            start_s=50,
+            start_t=0,
+            v0=100 / 3.6,
+            target_s=400,
+            target_t=0,
+        )
 
         overtaking_vehicle = Vehicle(
-            0,
-            1001,
-            400,
-            0,
-            100 / 3.6,
+            vehicle_id=0,
+            start_lanelet_id=1001,
+            start_s=400,
+            start_t=0,
+            v0=100 / 3.6,
             lc_delay=3,
             lc_direction=-1,
             inverse_driving_direction=True,
         )
         slow_vehicle = Vehicle(
-            1, 1001, 330, 0.5, 60 / 3.6, inverse_driving_direction=True
+            vehicle_id=1,
+            start_lanelet_id=1001,
+            start_s=330,
+            start_t=0.5,
+            v0=60 / 3.6,
+            inverse_driving_direction=True,
         )
 
         scenario = Scenario(

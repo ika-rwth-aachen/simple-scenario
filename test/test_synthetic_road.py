@@ -3,10 +3,15 @@ import numpy as np
 
 from pathlib import Path
 
-from simple_scenario.road import Road, StraightSegment, ArcSegment, ClothoidSegment
+from simple_scenario.road import (
+    SyntheticRoad,
+    StraightSegment,
+    ArcSegment,
+    ClothoidSegment,
+)
 
 
-class TestRoad:
+class TestSyntheticRoad:
     RESULT_DIR = Path(__file__).parent / "results" / "test_road"
     RESULT_DIR.mkdir(exist_ok=True)
 
@@ -16,7 +21,7 @@ class TestRoad:
 
         straight_segment = StraightSegment(100)
 
-        road = Road(3, 3.75, [straight_segment], goal_position=80)
+        road = SyntheticRoad(3, 3.75, [straight_segment])
 
         plot_name = "short_road"
 
@@ -55,7 +60,7 @@ class TestRoad:
 
         straight_segment = StraightSegment(100, heading=np.pi / 4)
 
-        road = Road(3, 3.75, [straight_segment])
+        road = SyntheticRoad(3, 3.75, [straight_segment])
 
         plot_name = "short_road_at_angle"
 
@@ -99,7 +104,7 @@ class TestRoad:
 
         segments = [straight_segment, clothoid_segment, arc_segment]
 
-        road = Road(2, 3.75, segments)
+        road = SyntheticRoad(2, 3.75, segments)
 
         plot_name = "curved_road"
 
@@ -139,7 +144,7 @@ class TestRoad:
 
         straight_segment = StraightSegment(1000)
 
-        road = Road(3, 3.75, [straight_segment], goal_position=80)
+        road = SyntheticRoad(3, 3.75, [straight_segment])
 
         plot_name = "long_road"
 
@@ -156,5 +161,5 @@ class TestRoad:
 
 
 if __name__ == "__main__":
-    test_road = TestRoad()
+    test_road = TestSyntheticRoad()
     test_road.test_curved_road()

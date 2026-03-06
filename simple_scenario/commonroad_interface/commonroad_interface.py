@@ -26,7 +26,7 @@ from ..lanelet_network_wrapper import LaneletNetworkWrapper
 if TYPE_CHECKING:
     from pathlib import Path
     from ..ego_configuration import EgoConfiguration
-    from ..road.road import Road
+    from ..road.synthetic_road import SyntheticRoad
     from ..vehicle import Vehicle
 
 
@@ -41,7 +41,7 @@ class CommonroadInterface:
         simple_scenario_config: dict,
         ego_configuration: EgoConfiguration,
         vehicles: list[Vehicle],
-        road: Road,
+        road: SyntheticRoad,
     ) -> None:
         logger.debug(
             f"Scenario '{simple_scenario_config['scenario_id']}': Create CR interface"
@@ -296,9 +296,11 @@ class CommonroadInterface:
 
         # Ego initial state
         ego_initial_state = State(
-            position=np.array([self._ego_configuration.x0, self._ego_configuration.y0]),
+            position=np.array(
+                [self._ego_configuration.start_x, self._ego_configuration.start_y]
+            ),
             velocity=self._ego_configuration.v0,
-            orientation=self._ego_configuration.heading0,
+            orientation=self._ego_configuration.start_heading,
             yaw_rate=0.0,
             slip_angle=0.0,
             time_step=0,
@@ -316,7 +318,7 @@ class CommonroadInterface:
         goal_area_width = max(self._road.offset_lines.keys())
 
         # In ref_line frenet coordinates
-        goal_area_pos_s = self._road.goal_position
+        goal_area_pos_s = self._ego_configuration.target_s
         goal_area_pos_t = -goal_area_width / 2
 
         # To cart

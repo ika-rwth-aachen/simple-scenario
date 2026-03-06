@@ -3,12 +3,10 @@ import pytest
 
 from pathlib import Path
 
-from simple_scenario import LXD_AVAILABLE
+from simple_scenario import CR_AVAILABLE, LXD_AVAILABLE
 
-if LXD_AVAILABLE:
-    from lxd_io import Dataset
-
-from simple_scenario.road import Road
+if LXD_AVAILABLE and CR_AVAILABLE:
+    from simple_scenario.lxd import HighdExtractor
 
 
 class TestHighdRoadCreation:
@@ -17,12 +15,16 @@ class TestHighdRoadCreation:
     RESULT_DIR = Path(__file__).parent / "results" / "test_highd_road_creation"
     RESULT_DIR.mkdir(exist_ok=True)
 
-    @pytest.mark.skipif(not LXD_AVAILABLE, reason="lxd extra is not installed")
+    @pytest.mark.skipif(
+        not (CR_AVAILABLE and LXD_AVAILABLE),
+        reason="commonroad and lxd extras are not installed",
+    )
     def test_highd_road_creation(self):
         result_dir = self.RESULT_DIR
         dataset_dir = self.DATA_DIR
 
-        dataset = Dataset(dataset_dir)
+        highd_extractor = HighdExtractor(dataset_dir)
+        dataset = highd_extractor.dataset
 
         for recording_id in dataset.recording_ids:
             print(f"recording: {recording_id:02d} / {len(dataset.recording_ids):02d}")
@@ -33,12 +35,12 @@ class TestHighdRoadCreation:
             if speed_limit == -1:
                 speed_limit = 120
 
-            lower_road = Road.from_highd_parameters(
+            lower_road, _ = highd_extractor.create_road_from_highd_parameters(
                 recording.get_meta_data("lowerLaneMarkings"),
                 "lower",
                 speed_limit=speed_limit,
             )
-            upper_road = Road.from_highd_parameters(
+            upper_road, _ = highd_extractor.create_road_from_highd_parameters(
                 recording.get_meta_data("upperLaneMarkings"),
                 "upper",
                 speed_limit=speed_limit,

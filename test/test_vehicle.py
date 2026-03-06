@@ -2,7 +2,7 @@ from pathlib import Path
 
 from simple_scenario import Vehicle
 from simple_scenario.rendering import create_scenario_plot_ax
-from simple_scenario.road import Road, StraightSegment
+from simple_scenario.road import SyntheticRoad, StraightSegment
 
 
 class TestVehicle:
@@ -15,7 +15,13 @@ class TestVehicle:
 
         print("Create vehicle")
 
-        vehicle = Vehicle(0, 1000, 10, 0, 27.78)
+        vehicle = Vehicle(
+            0,
+            start_lanelet_id=1000,
+            start_s=10,
+            start_t=0,
+            v0=27.78,
+        )
 
         # Access parameters
         print(f"Length: {vehicle.length}")
@@ -23,7 +29,7 @@ class TestVehicle:
 
         # For compilation, we need a road
         print("Compile vehicle")
-        road = Road(3, 3.75, [StraightSegment(300)])
+        road = SyntheticRoad(3, 3.75, [StraightSegment(300)])
 
         duration = 10
         dt = 0.1
@@ -47,7 +53,15 @@ class TestVehicle:
 
         print("Create vehicle")
 
-        vehicle = Vehicle(0, 1000, 10, 0, 27.78, lc_direction=1, lc_delay=2)
+        vehicle = Vehicle(
+            0,
+            start_lanelet_id=1000,
+            start_s=10,
+            start_t=0,
+            v0=27.78,
+            lc_direction=1,
+            lc_delay=2,
+        )
 
         # Access parameters
         print(f"Length: {vehicle.length}")
@@ -55,7 +69,7 @@ class TestVehicle:
 
         # For compilation, we need a road
         print("Compile vehicle")
-        road = Road(3, 3.75, [StraightSegment(300)])
+        road = SyntheticRoad(3, 3.75, [StraightSegment(300)])
 
         duration = 10
         dt = 0.1
@@ -81,7 +95,15 @@ class TestVehicle:
 
         print("Create vehicle")
 
-        vehicle = Vehicle(0, 1001, 10, 0, 27.78, lc_direction=-1, lc_delay=2)
+        vehicle = Vehicle(
+            0,
+            start_lanelet_id=1001,
+            start_s=10,
+            start_t=0,
+            v0=27.78,
+            lc_direction=-1,
+            lc_delay=2,
+        )
 
         # Access parameters
         print(f"Length: {vehicle.length}")
@@ -89,7 +111,7 @@ class TestVehicle:
 
         # For compilation, we need a road
         print("Compile vehicle")
-        road = Road(3, 3.75, [StraightSegment(300)])
+        road = SyntheticRoad(3, 3.75, [StraightSegment(300)])
 
         duration = 10
         dt = 0.1

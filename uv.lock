@@ -4180,7 +4180,7 @@ wheels = [
 
 [[package]]
 name = "simple-scenario"
-version = "0.10.2"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "commonroad-vehicle-models" },

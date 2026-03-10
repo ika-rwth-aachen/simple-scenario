@@ -165,7 +165,7 @@ class TestVehicleLaneChange:
     @pytest.mark.parametrize(
         "start_lanelet_id, lc_direction, expected_target_lanelet_id",
         [
-            (1000, 1, 1001),   # left from rightmost lane
+            (1000, 1, 1001),  # left from rightmost lane
             (1001, -1, 1000),  # right from center lane
         ],
     )
@@ -204,9 +204,7 @@ class TestVehicleLaneChange:
         assert post_lc_lanelet == expected_target_lanelet_id
 
         # Vehicle should remain on the target lanelet until the end
-        final_lanelet = road.find_lanelet_id_by_position(
-            vehicle.x[-1], vehicle.y[-1]
-        )
+        final_lanelet = road.find_lanelet_id_by_position(vehicle.x[-1], vehicle.y[-1])
         assert final_lanelet == expected_target_lanelet_id
 
     def test_polynomial_lc_lateral_offset_smooth(self):
@@ -237,7 +235,7 @@ class TestVehicleLaneChange:
     @pytest.mark.parametrize(
         "start_lanelet_id, lc_direction, expected_target_lanelet_id",
         [
-            (1000, 1, 1001),   # left from rightmost lane
+            (1000, 1, 1001),  # left from rightmost lane
             (1001, -1, 1000),  # right from center lane
         ],
     )
@@ -277,9 +275,7 @@ class TestVehicleLaneChange:
         assert post_lc_lanelet == expected_target_lanelet_id
 
         # Vehicle should remain on the target lanelet until the end
-        final_lanelet = road.find_lanelet_id_by_position(
-            vehicle.x[-1], vehicle.y[-1]
-        )
+        final_lanelet = road.find_lanelet_id_by_position(vehicle.x[-1], vehicle.y[-1])
         assert final_lanelet == expected_target_lanelet_id
 
     def test_vy_lc_lateral_offset_clamps(self):
@@ -330,7 +326,5 @@ class TestVehicleLaneChange:
         vehicle.compile(road, self.DURATION, self.DT)
 
         # Vehicle should end up on the target lanelet
-        final_lanelet = road.find_lanelet_id_by_position(
-            vehicle.x[-1], vehicle.y[-1]
-        )
+        final_lanelet = road.find_lanelet_id_by_position(vehicle.x[-1], vehicle.y[-1])
         assert final_lanelet == 1001

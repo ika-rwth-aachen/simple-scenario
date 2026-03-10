@@ -631,30 +631,41 @@ class Vehicle(Renderable):
                 ]
 
             elif self._lc_type == "vy":
+                n_lc_remaining = n_steps - lc_start_step
                 lat_offset_change_vector = (
-                    self._lc_vy
-                    * dt
-                    * np.ones_like(lat_offset_vector)
-                    * self._lc_direction
+                    self._lc_vy * dt * np.ones(n_lc_remaining) * self._lc_direction
                 )
-                lat_offset_vector[1:] = (
-                    lat_offset_vector[1:] + np.cumsum(lat_offset_change_vector)[:-1]
+                lat_offset_vector[lc_start_step + 1 :] = (
+                    lat_offset_vector[lc_start_step]
+                    + np.cumsum(lat_offset_change_vector)[:-1]
                 )
 
                 # End of LC
-                # Find max possible t positon
-                x_lc1, y_lc1 = Road.from_frenet_to_cart(
-                    lc_source_lanelet.centerline, self._start_position["s"], 0
+                # Find max possible t position (in source lanelet's Frenet frame)
+                x_src, y_src = Road.from_frenet_to_cart(
+                    lc_source_lanelet.centerline, lc_start_s, 0
                 )
-                _, t_lc1 = Road.from_cart_to_frenet(
-                    lc_target_lanelet.centerline, x_lc1, y_lc1
+                s_tgt, _ = Road.from_cart_to_frenet(
+                    lc_target_lanelet.centerline, x_src, y_src
                 )
-                max_t = t_lc1  # - self.width / 2
+                x_tgt, y_tgt = Road.from_frenet_to_cart(
+                    lc_target_lanelet.centerline, s_tgt, 0
+                )
+                _, max_t = Road.from_cart_to_frenet(
+                    lc_source_lanelet.centerline, x_tgt, y_tgt
+                )
 
                 if self._lc_direction == 1:
                     lat_offset_vector[lat_offset_vector > max_t] = max_t
                 else:
                     lat_offset_vector[lat_offset_vector < max_t] = max_t
+
+                # Compute n_lc_steps: how many steps until lateral offset reaches max_t
+                lateral_distance = abs(max_t - lat_offset_vector[lc_start_step])
+                n_lc_steps = min(
+                    int(np.ceil(lateral_distance / (self._lc_vy * dt))),
+                    n_steps - lc_start_step,
+                )
 
             # -- Section after lane change --
 

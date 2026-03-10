@@ -32,7 +32,7 @@ test_no_extras:
         - source $HOME/.local/bin/env
         - uv sync --dev
     script:
-        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test
+        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test tutorials --ignore=tutorials/B_01_commonroad_extra.ipynb
         - uv run pycobertura show --format html --output coverage_cobertura.html coverage.xml
     artifacts:
         when: always
@@ -56,7 +56,7 @@ test_lxd_extra:
         - source $HOME/.local/bin/env
         - uv sync --dev --extra lxd
     script:
-        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test
+        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test tutorials --ignore=tutorials/B_01_commonroad_extra.ipynb
         - uv run pycobertura show --format html --output coverage_cobertura.html coverage.xml
     artifacts:
         when: always
@@ -80,7 +80,7 @@ test_commonroad_extra:
         - source $HOME/.local/bin/env
         - uv sync --dev --extra commonroad
     script:
-        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test
+        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test tutorials
         - uv run pycobertura show --format html --output coverage_cobertura.html coverage.xml
     artifacts:
         when: always
@@ -104,7 +104,7 @@ test_all_extras:
         - source $HOME/.local/bin/env
         - uv sync --dev --all-extras
     script:
-        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test
+        - uv run pytest --junitxml=report.xml --cov=simple_scenario --cov=lanelet_network_wrapper --cov=simple_scenario_extraction --cov-report=xml --cov-report=html --cov-report=term-missing test tutorials
         - uv run pycobertura show --format html --output coverage_cobertura.html coverage.xml
     coverage: '/\d+\%\s*$/'
     artifacts:

@@ -660,11 +660,18 @@ class Vehicle(Renderable):
                 else:
                     lat_offset_vector[lat_offset_vector < max_t] = max_t
 
-                # Compute n_lc_steps: how many steps until lateral offset reaches max_t
+                # Compute n_lc_steps: number of trajectory samples from lc_start_step
+                # (inclusive) until the lateral offset first reaches/clamps to max_t.
+                # ceil(...) gives the number of increments needed; +1 accounts for the
+                # start step itself (which holds the pre-change offset).  Minimum of 1
+                # avoids lc_end_idx = lc_start_step - 1 when lateral_distance == 0.
                 lateral_distance = abs(max_t - lat_offset_vector[lc_start_step])
-                n_lc_steps = min(
-                    int(np.ceil(lateral_distance / (self._lc_vy * dt))),
-                    n_steps - lc_start_step,
+                n_lc_steps = max(
+                    min(
+                        int(np.ceil(lateral_distance / (self._lc_vy * dt))) + 1,
+                        n_steps - lc_start_step,
+                    ),
+                    1,
                 )
 
             # -- Section after lane change --

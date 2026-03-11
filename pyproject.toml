@@ -5,10 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "simple_scenario"
 authors = [
-    {name = "Lennart Vater", email = "lennart.vater@ika.rwth-aachen.de"}
+    {name = "Lennart Vater", email = "lennart.vater@rwth-aachen.de"},
+    {name = "Sven Tarlowski", email = "sven.tarlowski@ika.rwth-aachen.de"},
+    {name = "Christian Geller", email = "christian.geller@ika.rwth-aachen.de"},
+    {name = "ika - RWTH Aachen University", email = "opensource@ika.rwth-aachen.de"}
 ]
 maintainers = [
-    {name = "Lennart Vater", email = "lennart.vater@ika.rwth-aachen.de"}
+    {name = "Sven Tarlowski", email = "sven.tarlowski@ika.rwth-aachen.de"}
 ]
 description = "Quickly generate prototype test scenarios for automated driving"
 readme = "README.md"

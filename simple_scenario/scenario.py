@@ -810,7 +810,7 @@ class Scenario(Renderable):
             title += f" ({timestep * self._dt:.1f}s)"
         ax.set_title(title)
 
-        ax.legend(ncols=3)
+        ax.legend(ncols=3, loc="upper right")
 
         ax.set_aspect("equal")
 
@@ -858,14 +858,10 @@ class Scenario(Renderable):
                 ax.set_xlim(xmin - margin, xmax + margin)
                 ax.set_ylim(ymin - margin, ymax + margin)
 
-                ax.text(
-                    0.01,
-                    0.99,
-                    f"{np.round((timestep * self._dt), 1)}s",
-                    ha="left",
-                    va="top",
-                    transform=ax.transAxes,
+                ax.set_title(
+                    f"Scenario '{self._scenario_id}' ({timestep * self._dt:.1f}s)"
                 )
+                ax.legend(ncols=3, loc="upper right")
 
                 ax.set_aspect("equal")
 

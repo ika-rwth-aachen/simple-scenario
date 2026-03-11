@@ -163,7 +163,7 @@ class TestVehicleLaneChange:
     # -- polynomial lane-change tests --
 
     @pytest.mark.parametrize(
-        "start_lanelet_id, lc_direction, expected_target_lanelet_id",
+        ("start_lanelet_id", "lc_direction", "expected_target_lanelet_id"),
         [
             (1000, 1, 1001),  # left from rightmost lane
             (1001, -1, 1000),  # right from center lane
@@ -233,7 +233,7 @@ class TestVehicleLaneChange:
     # -- vy lane-change tests --
 
     @pytest.mark.parametrize(
-        "start_lanelet_id, lc_direction, expected_target_lanelet_id",
+        ("start_lanelet_id", "lc_direction", "expected_target_lanelet_id"),
         [
             (1000, 1, 1001),  # left from rightmost lane
             (1001, -1, 1000),  # right from center lane
